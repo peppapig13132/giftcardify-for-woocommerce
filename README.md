@@ -1,1 +1,1 @@
-# GiftCardify for woocommerce
+# GiftCardify for WooCommerce
