@@ -30,7 +30,7 @@ $sql_giftcard_logs = "CREATE TABLE IF NOT EXISTS $table_name_giftcard_logs (
   id INT AUTO_INCREMENT PRIMARY KEY,
   giftcard_id INT NOT NULL,
   product_order_id INT NOT NULL,
-  status ENUM('draft', 'pending', 'success', 'failed', 'canceled') NOT NULL,
+  status ENUM('draft', 'success', 'failed', 'canceled') NOT NULL,
   created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at datetime DEFAULT NULL,
   INDEX (giftcard_id),
