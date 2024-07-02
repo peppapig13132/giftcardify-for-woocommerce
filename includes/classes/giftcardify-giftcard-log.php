@@ -9,17 +9,19 @@ class GiftCardify_GiftCard_Log {
 
   public function create_giftcard_log(
     $giftcard_id,
-    $product_order_id
+    $product_order_id,
+    $amount
   ) {
     global $wpdb;
     $table_name = $wpdb->prefix . 'giftcard_logs';
     $created_at = date('Y-m-d H:i:s');
     
-    $wpdb->insert(
+    $result = $wpdb->insert(
       $table_name,
       array(
         'giftcard_id'       => $giftcard_id,
         'product_order_id'  => $product_order_id,
+        'amount'            => $amount,
         'status'            => 'draft',
         'created_at'        => $created_at,
         'updated_at'        => $created_at
@@ -27,11 +29,22 @@ class GiftCardify_GiftCard_Log {
       array(
         '%d',
         '%d',
+        '%d',
         '%s',
         '%s',
         '%s'
       )
     );
+
+    $insert_id = 0;
+
+    if (false = $result) {
+      $insert_id = -1;
+    } else {
+      $insert_id = $wpdb->insert_id;
+    }
+
+    return $insert_id;
   }
 
   public function udpate_status(
@@ -46,7 +59,7 @@ class GiftCardify_GiftCard_Log {
     );
     $where = array(
       'id' => $giftcard_log_id
-    )
+    );
 
     $wpdb->update(
       $table_name,
@@ -54,7 +67,7 @@ class GiftCardify_GiftCard_Log {
       $where,
       array('%s', '%s'),
       array('%d')
-    )
+    );
   }
 
   public function get_giftcard_logs() {}
