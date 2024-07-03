@@ -4,6 +4,7 @@ if ( ! defined( 'ABSPATH' ) ) {
   exit; // Exit if accessed directly
 }
 
+// This class only used to log "purchase product with gift card" action.
 class GiftCardify_GiftCard_Log {
   public function __construct() {}
 

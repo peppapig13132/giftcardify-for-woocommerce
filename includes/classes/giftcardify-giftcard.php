@@ -12,6 +12,7 @@ class GiftCardify_GiftCard {
   }
 
   public function create_giftcard(
+    $uuid,
     $receiver_firstname,
     $receiver_lastname,
     $receiver_email,
@@ -31,6 +32,7 @@ class GiftCardify_GiftCard {
     $wpdb->insert(
       $table_name,
       array(
+        'uuid'                => $uuid,
         'receiver_firstname'  => $receiver_firstname,
         'receiver_lastname'   => $receiver_lastname,
         'receiver_email'      => $receiver_email,

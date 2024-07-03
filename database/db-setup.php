@@ -8,6 +8,7 @@ $table_name_giftcard_logs = $wpdb->prefix . 'giftcard_logs';
 
 $sql_giftcards  = "CREATE TABLE IF NOT EXISTS $table_name_giftcards (
   id mediumint(9) NOT NULL AUTO_INCREMENT,
+  uuid varchar(50) NOT NULL,
   receiver_firstname varchar(255) NOT NULL,
   receiver_lastname varchar(255) NOT NULL,
   receiver_email varchar(255) NOT NULL,
