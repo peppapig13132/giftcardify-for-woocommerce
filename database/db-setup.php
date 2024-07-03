@@ -17,6 +17,8 @@ $sql_giftcards  = "CREATE TABLE IF NOT EXISTS $table_name_giftcards (
   code varchar(100) NOT NULL,
   amount decimal(10,2) NOT NULL,
   balance decimal(10,2) NOT NULL,
+  status ENUM('draft', 'pending', 'ready_to_use', 'canceled') NOT NULL,
+  note varchar(50),
   shipping_at datetime DEFAULT NULL,
   created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at datetime DEFAULT NULL,
