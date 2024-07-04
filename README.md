@@ -21,7 +21,7 @@ Checkout page
 |        |
 |        |-- By clicking "Go to Checkout" button:
 |            > WooCommerce plugin create an order for a gift card
-|            > GiftCardify also create a new record of giftcard in "giftcards" table
+|            > GiftCardify also create a new record of giftcard in "giftcards" table (shortcode)
 |/
 |
 Backend updates giftcard status and send email to customer and gift card receiver
@@ -39,3 +39,5 @@ Start
 |
 End
 ```
+
+## How to use GiftCardify?
