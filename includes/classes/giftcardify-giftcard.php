@@ -4,7 +4,7 @@ if ( ! defined( 'ABSPATH' ) ) {
   exit; // Exit if accessed directly
 }
 
-require_once 'giftcardify-giftcard-log.php';
+require_once(plugin_dir_path(__FILE__) . 'includes/classes/giftcardify-giftcard-log.php');
 
 class GiftCardify_GiftCard {
   public function __construct() {

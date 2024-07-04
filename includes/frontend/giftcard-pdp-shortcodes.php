@@ -108,4 +108,4 @@ function giftcardify_product_form_shortcode() {
 
   return $output;
 }
-add_shortcode('giftcardify', 'giftcardify_product_form_shortcode');
+add_shortcode('giftcardify_product_form', 'giftcardify_product_form_shortcode');

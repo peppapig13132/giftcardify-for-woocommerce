@@ -7,7 +7,7 @@ $table_name_giftcards = $wpdb->prefix . 'giftcards';
 $table_name_giftcard_logs = $wpdb->prefix . 'giftcard_logs';
 
 $sql_giftcards  = "CREATE TABLE IF NOT EXISTS $table_name_giftcards (
-  id mediumint(9) NOT NULL AUTO_INCREMENT,
+  id INT AUTO_INCREMENT PRIMARY KEY,
   uuid varchar(50) NOT NULL,
   receiver_firstname varchar(255) NOT NULL,
   receiver_lastname varchar(255) NOT NULL,
@@ -23,10 +23,7 @@ $sql_giftcards  = "CREATE TABLE IF NOT EXISTS $table_name_giftcards (
   shipping_at datetime DEFAULT NULL,
   created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at datetime DEFAULT NULL,
-  expired_at datetime DEFAULT NULL,
-  PRIMARY KEY (id),
-  UNIQUE KEY code_unique (code)
-  INDEX (code)
+  expired_at datetime DEFAULT NULL
 ) $charset_collate;";
 
 $sql_giftcard_logs = "CREATE TABLE IF NOT EXISTS $table_name_giftcard_logs (
@@ -37,6 +34,5 @@ $sql_giftcard_logs = "CREATE TABLE IF NOT EXISTS $table_name_giftcard_logs (
   status ENUM('draft', 'success', 'failed', 'canceled') NOT NULL,
   created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at datetime DEFAULT NULL,
-  INDEX (giftcard_id),
-  INDEX (product_order_id)
+  INDEX (giftcard_id)
 ) $charset_collate;";
