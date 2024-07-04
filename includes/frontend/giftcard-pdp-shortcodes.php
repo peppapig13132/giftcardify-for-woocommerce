@@ -56,24 +56,26 @@ function giftcardify_product_form_shortcode() {
       }
 
       addToCheckoutButton.addEventListener("click", function() {
+        var amount = document.getElementById("' . GIFTCARD_FORM_AMOUNT . '").value;
         var receiver_firstname = document.getElementById("' . GIFTCARD_FORM_RECEIVER_FIRST_NAME . '").value;
         var receiver_lastname = document.getElementById("' . GIFTCARD_FORM_RECEIVER_LAST_NAME . '").value;
         var receiver_email = document.getElementById("' . GIFTCARD_FORM_RECEIVER_EMAIL . '").value;
         var sender_name = document.getElementById("' . GIFTCARD_FORM_SENDER_NAME . '").value;
         var gift_message = document.getElementById("' . GIFTCARD_FORM_GIFT_MESSAGE . '").value;
-        var amount = document.getElementById("' . GIFTCARD_FORM_AMOUNT . '").value;
+        var shipping_date = document.getElementById("' . GIFTCARD_FORM_SHIPPING_DATE . '").value;
         var timestamp = Date.now();
         
         // Is the gift card form validation required?
         if (true) {
           var giftcardData = {
             uuid: generatedUuid,
+            amount: amount,
             receiver_firstname: receiver_firstname,
             receiver_lastname: receiver_lastname,
             receiver_email: receiver_email,
             sender_name: sender_name,
             gift_message: gift_message,
-            amount: amount,
+            shipping_date: shipping_date,
             timestamp: timestamp
           };
 
