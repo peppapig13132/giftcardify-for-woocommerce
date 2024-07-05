@@ -36,6 +36,18 @@ function giftcardify_activation() {
 
 function giftcardify_deactivation() {
   // Deactivation tasks
+  
+  // Drop tables - use this script only in development mode
+  global $wpdb;
+
+  $table_name_giftcards = $wpdb->prefix . 'giftcards';
+  $table_name_giftcard_logs = $wpdb->prefix . 'giftcard_logs';
+
+  $sql_delete_giftcards = "DROP TABLE IF EXISTS $table_name_giftcards";
+  $sql_delete_giftcard_logs = "DROP TABLE IF EXISTS $table_name_giftcard_logs";
+
+  $wpdb->query($sql_delete_giftcards);
+  $wpdb->query($sql_delete_giftcard_logs);
 }
 
 
