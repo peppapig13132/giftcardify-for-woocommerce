@@ -13,12 +13,33 @@ if (!defined('WPINC')) {
   die;
 }
 
-// Include required files
-require_once(plugin_dir_path(__FILE__) . 'includes/frontend/giftcard-pdp-shortcodes.php');
 
 // Plugin activation and deactivation hooks
 register_activation_hook(__FILE__, 'giftcardify_activation');
 register_deactivation_hook(__FILE__, 'giftcardify_deactivation');
+
+
+// Hook to enqueue the required scripts
+function giftcardify_enqueue_uuid_script() {
+  wp_enqueue_script(
+    'uuid-script', 
+    'https://cdnjs.cloudflare.com/ajax/libs/uuid/8.3.2/uuid.min.js', 
+    array(), 
+    null, 
+    true
+  );
+}
+add_action('wp_enqueue_scripts', 'giftcardify_enqueue_uuid_script');
+
+function giftcard_pdp_shortcodes_script() {
+  if (is_product() && get_queried_object()->post_name == 'gift-card') {
+    $timestamp = Date('U');
+    wp_register_script('giftcard-pdp-shortcodes-script', plugins_url('/assets/js/giftcard-pdp-shortcodes.js?' . $timestamp, __FILE__), array(), null, true);
+    wp_enqueue_script('giftcard-pdp-shortcodes-script');
+  }
+}
+add_action('wp_enqueue_scripts', 'giftcard_pdp_shortcodes_script');
+
 
 function giftcardify_activation() {
   // Activation tasks
