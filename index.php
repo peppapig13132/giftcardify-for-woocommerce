@@ -31,14 +31,14 @@ function giftcardify_enqueue_uuid_script() {
 }
 add_action('wp_enqueue_scripts', 'giftcardify_enqueue_uuid_script');
 
-function giftcard_pdp_shortcodes_script() {
+function giftcard_pdp_script() {
   if (is_product() && get_queried_object()->post_name == 'gift-card') {
     $timestamp = Date('U');
-    wp_register_script('giftcard-pdp-shortcodes-script', plugins_url('/assets/js/giftcard-pdp-shortcodes.js?' . $timestamp, __FILE__), array(), null, true);
-    wp_enqueue_script('giftcard-pdp-shortcodes-script');
+    wp_register_script('giftcard-pdp-script', plugins_url('/assets/js/giftcard-pdp-script.js?' . $timestamp, __FILE__), array(), null, true);
+    wp_enqueue_script('giftcard-pdp-script');
   }
 }
-add_action('wp_enqueue_scripts', 'giftcard_pdp_shortcodes_script');
+add_action('wp_enqueue_scripts', 'giftcard_pdp_script');
 
 
 function giftcardify_activation() {
