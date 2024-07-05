@@ -14,9 +14,29 @@ if (!defined('WPINC')) {
 }
 
 
+// Include require files
+require_once(plugin_dir_path(__FILE__) . 'includes/classes/giftcardify-giftcard.php');
+
+
 // Plugin activation and deactivation hooks
 register_activation_hook(__FILE__, 'giftcardify_activation');
 register_deactivation_hook(__FILE__, 'giftcardify_deactivation');
+
+function giftcardify_activation() {
+  // Activation tasks
+
+  // Create tables
+  require_once(plugin_dir_path(__FILE__) . 'database/db-setup.php');
+
+  require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
+  
+  dbDelta($sql_giftcards);
+  dbDelta($sql_giftcard_logs);
+}
+
+function giftcardify_deactivation() {
+  // Deactivation tasks
+}
 
 
 // Hook to enqueue the required scripts
@@ -41,18 +61,49 @@ function giftcard_pdp_script() {
 add_action('wp_enqueue_scripts', 'giftcard_pdp_script');
 
 
-function giftcardify_activation() {
-  // Activation tasks
+add_action('wp_ajax_buy_gift_card', 'buy_gift_card');
+add_action('wp_ajax_nopriv_buy_gift_card', 'buy_gift_card');
 
-  // Create tables
-  require_once(plugin_dir_path(__FILE__) . 'database/db-setup.php');
+function buy_gift_card() {
+  if(isset($_POST['post_id'], $_POST['input_amount'], $_POST['referer_title'], $_POST['form_fields'])) {
+    $product_id           = intval($_POST['post_id']);
+    $amount               = floatval($_POST['input_amount']);
+    $title                = $_POST['referer_title'];
+    $data                 = $_POST['form_fields'];
 
-  require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
-  
-  dbDelta($sql_giftcards);
-  dbDelta($sql_giftcard_logs);
-}
+    $uuid                 = $_POST['uuid'];
+    $receiver_firstname   = $data['giftcard_form_receiver_first_name'];
+    $receiver_lastname    = $data['giftcard_form_receiver_last_name'];
+    $receiver_email       = $data['giftcard_form_receiver_email'];
+    $sender_name          = $data['giftcard_form_sender_name'];
+    $sender_email         = '';
+    $gift_message         = $data['giftcard_form_gift_message'];
+    $amount               = intval($_POST['input_amount']);
+    $shipping_at          = $data['giftcard_form_shipping_date'];
+    
+    $giftcard = new GiftCardify_GiftCard();
 
-function giftcardify_deactivation() {
-  // Deactivation tasks
+    $result = $giftcard->create_giftcard(
+      $uuid,
+      $receiver_firstname,
+      $receiver_lastname,
+      $receiver_email,
+      $sender_name,
+      $sender_email,
+      $gift_message,
+      $amount,
+      $shipping_at
+    );
+    
+    if($result) {
+      wp_send_json_success($result);
+    } else {
+      wp_send_json_error('Buy gift card failed.');
+    }
+
+  } else {
+    wp_send_json_error('Buy gift card failed.');
+  }
+
+  wp_die();
 }

@@ -39,7 +39,7 @@ class GiftCardify_GiftCard_Log {
 
     $insert_id = 0;
 
-    if (false = $result) {
+    if (false == $result) {
       $insert_id = -1;
     } else {
       $insert_id = $wpdb->insert_id;

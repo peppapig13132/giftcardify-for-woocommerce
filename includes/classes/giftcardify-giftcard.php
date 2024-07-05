@@ -4,7 +4,7 @@ if ( ! defined( 'ABSPATH' ) ) {
   exit; // Exit if accessed directly
 }
 
-require_once(plugin_dir_path(__FILE__) . 'includes/classes/giftcardify-giftcard-log.php');
+require_once(plugin_dir_path(__FILE__) . 'giftcardify-giftcard-log.php');
 
 class GiftCardify_GiftCard {
   public function __construct() {
@@ -29,7 +29,7 @@ class GiftCardify_GiftCard {
     $created_at = date('Y-m-d H:i:s');
     $expired_at = date('Y-m-d H:i:s', strtotime('+1 year', strtotime($shipping_at_)));
 
-    $wpdb->insert(
+    $result = $wpdb->insert(
       $table_name,
       array(
         'uuid'                => $uuid,
@@ -65,6 +65,8 @@ class GiftCardify_GiftCard {
         '%s'
       )
     );
+
+    return $result;
   }
 
   public function use_giftcard(
@@ -82,7 +84,7 @@ class GiftCardify_GiftCard {
     } else {
       // get balance and validate if it's enough
       if($giftcard->balance < $amount) {
-        echo "Gift card balance isn't enough."
+        echo "Gift card balance isn't enough.";
       } else {
         // create gift card usage log
         $giftcard_log_id = $this->giftcardify_giftcard_log->create_giftcard_log($giftcard_id, $product_order_id, $amount);

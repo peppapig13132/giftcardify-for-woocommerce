@@ -10,10 +10,30 @@ jQuery(document).ready(function($) {
 
     if (window.uuid) {
       var generatedUuid = uuid.v4();
+      jsonData['uuid'] = generatedUuid;
     } else {
       console.log("🐛 missing uuid module");
     }
 
-    localStorage.setItem("_giftcardify_giftcard", JSON.stringify(jsonData));
+    localStorage.setItem('_giftcardify_giftcard', JSON.stringify(jsonData));
+
+    jsonData['action'] = 'buy_gift_card';
+
+    $.ajax({
+      url: '/wp-admin/admin-ajax.php',
+      type: 'POST',
+      data: jsonData,
+      success: function(response) {
+        if(response.success) {
+          // window.location.href = '/cart';
+          console.log(response.data)
+        } else {
+          console.log('Failed to add product to cart');
+        }
+      },
+      error: function(xhr, status, error) {
+        console.error('Error adding product to cart');
+      }
+    });
   });
 });
