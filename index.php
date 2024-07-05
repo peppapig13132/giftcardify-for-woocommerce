@@ -13,6 +13,9 @@ if (!defined('WPINC')) {
   die;
 }
 
+// Include required files
+require_once(plugin_dir_path(__FILE__) . 'includes/frontend/giftcard-pdp-shortcodes.php');
+
 // Plugin activation and deactivation hooks
 register_activation_hook(__FILE__, 'giftcardify_activation');
 register_deactivation_hook(__FILE__, 'giftcardify_deactivation');

@@ -24,7 +24,7 @@ Model: Giftcard
 }
 */
 
-require_once plugin_dir_path(__FILE__) . 'constants.php';
+require_once plugin_dir_path(__FILE__) . '../../constants.php';
 
 // Hook to enqueue the script on all pages - Import uuid module via cdn.
 function giftcardify_enqueue_uuid_script() {
@@ -55,6 +55,11 @@ function giftcardify_product_form_shortcode() {
         console.log("🐛 missing uuid module");
       }
 
+      if (!addToCheckoutButton) {
+        console.error("🚫 Add to Checkout button not found");
+        return; // Stop the script if button is not found
+      }
+
       addToCheckoutButton.addEventListener("click", function() {
         var amount = document.getElementById("' . GIFTCARD_FORM_AMOUNT . '").value;
         var receiver_firstname = document.getElementById("' . GIFTCARD_FORM_RECEIVER_FIRST_NAME . '").value;
@@ -64,21 +69,25 @@ function giftcardify_product_form_shortcode() {
         var gift_message = document.getElementById("' . GIFTCARD_FORM_GIFT_MESSAGE . '").value;
         var shipping_date = document.getElementById("' . GIFTCARD_FORM_SHIPPING_DATE . '").value;
         var timestamp = Date.now();
-        
-        // Is the gift card form validation required?
-        if (true) {
-          var giftcardData = {
-            uuid: generatedUuid,
-            amount: amount,
-            receiver_firstname: receiver_firstname,
-            receiver_lastname: receiver_lastname,
-            receiver_email: receiver_email,
-            sender_name: sender_name,
-            gift_message: gift_message,
-            shipping_date: shipping_date,
-            timestamp: timestamp
-          };
 
+        if (!amount || !receiver_firstname || !receiver_lastname || !receiver_email || !sender_name || !gift_message || !shipping_date) {
+          console.error("🚫 Required fields are missing");
+          return; // Stop the script if required fields are missing
+        }
+        
+        var giftcardData = {
+          uuid: generatedUuid,
+          amount: amount,
+          receiver_firstname: receiver_firstname,
+          receiver_lastname: receiver_lastname,
+          receiver_email: receiver_email,
+          sender_name: sender_name,
+          gift_message: gift_message,
+          shipping_date: shipping_date,
+          timestamp: timestamp
+        };
+
+        try {
           // Retrieve existing data from localStorage
           var existingData = localStorage.getItem("giftcardify_giftcards");
 
@@ -101,6 +110,8 @@ function giftcardify_product_form_shortcode() {
           localStorage.setItem("giftcardify_giftcards", JSON.stringify(existingData));
 
           console.log("🔔 giftcard data stored in localstorage!");
+        } catch(e) {
+          console.error("🛑 Error storing giftcard data in localstorage", e);
         }
       });
     });
