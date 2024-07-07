@@ -66,7 +66,12 @@ class GiftCardify_GiftCard {
       )
     );
 
-    return $result;
+    if ( $result ) {
+      $inserted_id = $wpdb->insert_id;
+      return $inserted_id;
+    } else {
+      return false;
+    }
   }
 
   public function use_giftcard(

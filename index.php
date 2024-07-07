@@ -95,7 +95,7 @@ function buy_gift_card() {
     
     $giftcard = new GiftCardify_GiftCard();
 
-    $result = $giftcard->create_giftcard(
+    $giftcard_id = $giftcard->create_giftcard(
       $uuid,
       $receiver_firstname,
       $receiver_lastname,
@@ -107,12 +107,25 @@ function buy_gift_card() {
       $shipping_at
     );
     
-    if($result) {
-      wp_send_json_success($result);
-    } else {
-      wp_send_json_error('Buy gift card failed.');
-    }
+    if ($giftcard_id) {
+      // Add the gift card to the WooCommerce cart
+      $cart_item_key = WC()->cart->add_to_cart($product_id, 1, 0, array(), $giftcard_id);
 
+      if ($cart_item_key) {
+        // If adding to cart was successful, send JSON success response
+        wp_send_json_success(array(
+          'message' => 'Gift card added to cart successfully.',
+          'giftcard_id' => $giftcard_id,
+          'cart_item_key' => $cart_item_key,
+        ));
+      } else {
+        // If adding to cart failed, send JSON error response
+        wp_send_json_error('Failed to add gift card to cart.');
+      }
+    } else {
+      // If creating gift card failed, send JSON error response
+      wp_send_json_error('Failed to create gift card.');
+    }
   } else {
     wp_send_json_error('Buy gift card failed.');
   }

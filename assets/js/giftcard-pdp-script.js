@@ -25,8 +25,7 @@ jQuery(document).ready(function($) {
       data: jsonData,
       success: function(response) {
         if(response.success) {
-          // window.location.href = '/cart';
-          console.log(response.data)
+          window.location.href = '/cart';
         } else {
           console.log('Failed to add product to cart');
         }
