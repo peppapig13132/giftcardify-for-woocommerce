@@ -8,127 +8,31 @@ Author:
 Author URI:
 */
 
+
 // If this file is called directly, abort.
 if (!defined('WPINC')) {
   die;
 }
 
 
-// Include require files
-require_once(plugin_dir_path(__FILE__) . 'includes/classes/giftcardify-giftcard.php');
+/**
+ * Include require files
+ */
+require_once(plugin_dir_path(__FILE__) . 'templates/giftcard-template.php');
 
 
-// Plugin activation and deactivation hooks
+/**
+ * Plugin activation hooks
+ */
 register_activation_hook(__FILE__, 'giftcardify_activation');
+
+function giftcardify_activation() {}
+
+
+/**
+ * Plugin deactivation hooks
+ */
 register_deactivation_hook(__FILE__, 'giftcardify_deactivation');
 
-function giftcardify_activation() {
-  // Activation tasks
+function giftcardify_deactivation() {}
 
-  // Create tables
-  require_once(plugin_dir_path(__FILE__) . 'database/db-setup.php');
-
-  require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
-  
-  dbDelta($sql_giftcards);
-  dbDelta($sql_giftcard_logs);
-}
-
-function giftcardify_deactivation() {
-  // Deactivation tasks
-  
-  // Drop tables - use this script only in development mode
-  global $wpdb;
-
-  $table_name_giftcards = $wpdb->prefix . 'giftcards';
-  $table_name_giftcard_logs = $wpdb->prefix . 'giftcard_logs';
-
-  $sql_delete_giftcards = "DROP TABLE IF EXISTS $table_name_giftcards";
-  $sql_delete_giftcard_logs = "DROP TABLE IF EXISTS $table_name_giftcard_logs";
-
-  $wpdb->query($sql_delete_giftcards);
-  $wpdb->query($sql_delete_giftcard_logs);
-}
-
-
-// Hook to enqueue the required scripts
-function giftcardify_enqueue_uuid_script() {
-  wp_enqueue_script(
-    'uuid-script', 
-    'https://cdnjs.cloudflare.com/ajax/libs/uuid/8.3.2/uuid.min.js', 
-    array(), 
-    null, 
-    true
-  );
-}
-add_action('wp_enqueue_scripts', 'giftcardify_enqueue_uuid_script');
-
-function giftcard_pdp_script() {
-  if (is_product() && get_queried_object()->post_name == 'gift-card') {
-    $timestamp = Date('U');
-    wp_register_script('giftcard-pdp-script', plugins_url('/assets/js/giftcard-pdp-script.js?' . $timestamp, __FILE__), array(), null, true);
-    wp_enqueue_script('giftcard-pdp-script');
-  }
-}
-add_action('wp_enqueue_scripts', 'giftcard_pdp_script');
-
-
-add_action('wp_ajax_buy_gift_card', 'buy_gift_card');
-add_action('wp_ajax_nopriv_buy_gift_card', 'buy_gift_card');
-
-function buy_gift_card() {
-  if(isset($_POST['post_id'], $_POST['input_amount'], $_POST['referer_title'], $_POST['form_fields'])) {
-    $product_id           = intval($_POST['post_id']);
-    $amount               = floatval($_POST['input_amount']);
-    $title                = $_POST['referer_title'];
-    $data                 = $_POST['form_fields'];
-
-    $uuid                 = $_POST['uuid'];
-    $receiver_firstname   = $data['giftcard_form_receiver_first_name'];
-    $receiver_lastname    = $data['giftcard_form_receiver_last_name'];
-    $receiver_email       = $data['giftcard_form_receiver_email'];
-    $sender_name          = $data['giftcard_form_sender_name'];
-    $sender_email         = '';
-    $gift_message         = $data['giftcard_form_gift_message'];
-    $amount               = intval($_POST['input_amount']);
-    $shipping_at          = $data['giftcard_form_shipping_date'];
-    
-    $giftcard = new GiftCardify_GiftCard();
-
-    $giftcard_id = $giftcard->create_giftcard(
-      $uuid,
-      $receiver_firstname,
-      $receiver_lastname,
-      $receiver_email,
-      $sender_name,
-      $sender_email,
-      $gift_message,
-      $amount,
-      $shipping_at
-    );
-    
-    if ($giftcard_id) {
-      // Add the gift card to the WooCommerce cart
-      $cart_item_key = WC()->cart->add_to_cart($product_id, 1, 0, array(), $giftcard_id);
-
-      if ($cart_item_key) {
-        // If adding to cart was successful, send JSON success response
-        wp_send_json_success(array(
-          'message' => 'Gift card added to cart successfully.',
-          'giftcard_id' => $giftcard_id,
-          'cart_item_key' => $cart_item_key,
-        ));
-      } else {
-        // If adding to cart failed, send JSON error response
-        wp_send_json_error('Failed to add gift card to cart.');
-      }
-    } else {
-      // If creating gift card failed, send JSON error response
-      wp_send_json_error('Failed to create gift card.');
-    }
-  } else {
-    wp_send_json_error('Buy gift card failed.');
-  }
-
-  wp_die();
-}
