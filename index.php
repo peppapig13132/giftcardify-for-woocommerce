@@ -149,3 +149,146 @@ function add_custom_price_to_cart_item($cart_item_data, $product_id) {
   }
   return $cart_item_data;
 }
+
+
+/** 
+ * Set custom gift card amount before add to cart
+ */
+add_filter('woocommerce_add_cart_item_data', 'add_custom_gift_card_price_to_cart', 10, 2);
+function add_custom_gift_card_price_to_cart($cart_item_data, $product_id) {
+    if (isset($_POST['gift_card_value'])) {
+        $gift_card_value = sanitize_text_field($_POST['gift_card_value']);
+        if ($gift_card_value == 'custom_amount') {
+            $gift_card_value = floatval($_POST['custom_amount_input']);
+        }
+        $cart_item_data['gift_card_value'] = $gift_card_value;
+    }
+    return $cart_item_data;
+}
+
+
+/** 
+ * Add gift card to cart - Ajax
+ */
+add_action('wp_ajax_add_gift_card_to_cart', 'add_gift_card_to_cart');
+add_action('wp_ajax_nopriv_add_gift_card_to_cart', 'add_gift_card_to_cart');
+
+function add_gift_card_to_cart() {
+  // Verify nonce for security
+  check_ajax_referer('gift_card_nonce', 'security');
+
+  // Initialize response array
+  $response = array('success' => false, 'message' => '');
+
+  // Ensure WooCommerce session is started
+  if (!WC()->session) {
+    WC()->session = new WC_Session_Handler();
+    WC()->session->init();
+  }
+
+  // Retrieve and sanitize POST data
+  $product_id = isset($_POST['post_id']) ? intval($_POST['post_id']) : 0;
+  $product_type = isset($_POST['product_type']) ? sanitize_text_field($_POST['product_type']) : '';
+  $gift_card_value = isset($_POST['gift_card_value']) ? sanitize_text_field($_POST['gift_card_value']) : '';
+  $custom_amount = isset($_POST['custom_gift_card_price']) ? floatval($_POST['custom_gift_card_price']) : 100;
+  $receiver_firstname = isset($_POST['receiver_firstname']) ? sanitize_text_field($_POST['receiver_firstname']) : '';
+  $receiver_lastname = isset($_POST['receiver_lastname']) ? sanitize_text_field($_POST['receiver_lastname']) : '';
+  $receiver_email = isset($_POST['receiver_email']) ? sanitize_email($_POST['receiver_email']) : '';
+  $sender_name = isset($_POST['sender_name']) ? sanitize_text_field($_POST['sender_name']) : '';
+  $gift_message = isset($_POST['gift_message']) ? sanitize_textarea_field($_POST['gift_message']) : '';
+  $shipping_date = isset($_POST['shipping_date']) ? sanitize_text_field($_POST['shipping_date']) : '';
+
+  // Validate product ID
+  if ($product_id <= 0) {
+    $response['message'] = __('Invalid product ID.', 'textdomain');
+    wp_send_json($response);
+  }
+
+  // Validate product type (if necessary)
+  if ($product_type !== 'gift_card') {
+    $response['message'] = __('Invalid product type.', 'textdomain');
+    wp_send_json($response);
+  }
+
+  // Validate gift card value
+  if (empty($gift_card_value)) {
+    $response['message'] = __('Gift card value is required.', 'textdomain');
+    wp_send_json($response);
+  }
+
+  // Validate receiver first name
+  if (empty($receiver_firstname)) {
+    $response['message'] = __('Receiver first name is required.', 'textdomain');
+    wp_send_json($response);
+  }
+
+  // Validate receiver last name
+  if (empty($receiver_lastname)) {
+    $response['message'] = __('Receiver last name is required.', 'textdomain');
+    wp_send_json($response);
+  }
+
+  // Validate receiver email
+  if (empty($receiver_email)) {
+    $response['message'] = __('Receiver email is required.', 'textdomain');
+    wp_send_json($response);
+  } elseif (!is_email($receiver_email)) {
+    $response['message'] = __('Invalid receiver email format.', 'textdomain');
+    wp_send_json($response);
+  }
+
+  // Optionally, validate sender name, gift message, and shipping date as needed
+
+  // Prepare custom cart item data
+  $cart_item_data = array(
+    'gift_card_value' => $gift_card_value === 'custom_amount' ? $custom_amount : $gift_card_value,
+    'receiver_firstname' => $receiver_firstname,
+    'receiver_lastname' => $receiver_lastname,
+    'receiver_email' => $receiver_email,
+    'sender_name' => $sender_name,
+    'gift_message' => $gift_message,
+    'shipping_date' => $shipping_date,
+  );
+
+  // Check if product is purchasable
+  $product = wc_get_product($product_id);
+
+  // $product->set_regular_price('100'); // You can set a default or minimum value
+
+  // Mark as virtual and downloadable
+  $product->set_virtual(true);
+
+  // Set stock status
+  $product->set_manage_stock(false);
+  $product->set_stock_status('instock');
+
+  // Set SKU
+  $product->set_sku('GFT100');
+
+  // Save the product
+  $product->save();
+
+  if (!$product->is_purchasable()) {
+    error_log('Product is not purchasable: ' . $product_id);
+    $response['message'] = __('This product cannot be purchased.', 'textdomain');
+    wp_send_json($response);
+  }
+
+  // Add product to cart
+  $cart_item_key = WC()->cart->add_to_cart($product_id, 1, 0, array(), $cart_item_data);
+
+  if ($cart_item_key) {
+    $response['success'] = true;
+    $response['message'] = __('Gift card added to cart successfully.', 'textdomain');
+  } else {
+    $response['success'] = false;
+    $response['message'] = __('Failed to add gift card to cart.', 'textdomain');
+    // Log error details
+    error_log('Failed to add to cart. Product ID: ' . $product_id);
+    error_log('Cart item data: ' . print_r($cart_item_data, true));
+    error_log('Cart contents: ' . print_r(WC()->cart->get_cart(), true));
+  }
+
+  wp_send_json($response);
+  wp_die();
+}

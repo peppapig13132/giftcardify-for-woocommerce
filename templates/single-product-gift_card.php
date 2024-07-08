@@ -10,6 +10,7 @@ get_header('shop');
 while (have_posts()) :
   the_post();
   global $product;
+  $nonce = wp_create_nonce('gift_card_nonce');
   ?>
 
   <div id="product-<?php the_ID(); ?>" <?php wc_product_class(); ?>>
@@ -19,8 +20,10 @@ while (have_posts()) :
     echo woocommerce_get_product_thumbnail();
     ?>
 
-    <form class="cart" method="post" enctype="multipart/form-data">
-      <?php do_action('woocommerce_before_add_to_cart_button'); ?>
+    <form class="cart" method="post" id="gift_card_form" enctype="multipart/form-data">
+      <input type="hidden" name="post_id" value="<?php echo $product->get_id(); ?>">
+      <input type="hidden" name="product_type" value="<?php echo $product->get_type(); ?>">
+      <input type="hidden" name="security" id="gift_card_nonce" value="<?php echo esc_attr($nonce); ?>">
 
       <?php
       // Display radio buttons for predefined values if available
@@ -91,6 +94,36 @@ while (have_posts()) :
       } else {
         $('#custom_amount_input').hide();
       }
+    });
+
+    $('#gift_card_form').on('submit', function(e) {
+      e.preventDefault();
+
+      var formData = $(this).serializeArray();
+      var jsonData = {};
+
+      $.each(formData, function() {
+        jsonData[this.name] = this.value;
+      });
+      
+      jsonData['action'] = 'add_gift_card_to_cart';
+      jsonData['security'] = $('#gift_card_nonce').val();
+      
+      $.ajax({
+        url: '/wp-admin/admin-ajax.php',
+        type: 'POST',
+        data: jsonData,
+        success: function(response) {
+          if(response.success) {
+            // window.location.href = '/cart';
+          } else {
+            console.log('Failed to add gift card to cart');
+          }
+        },
+        error: function(xhr, status, error) {
+          console.error('Error adding gift card to cart');
+        }
+      });
     });
   });
   </script>
