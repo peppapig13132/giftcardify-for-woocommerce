@@ -124,9 +124,8 @@ function load_custom_gift_card_template($template) {
 
 
 /** 
- * Add Custom Pricing Logic
+ * Display preset gift card prices to single page gift card template
  */
-
 add_filter('woocommerce_get_price_html', 'custom_gift_card_price_html', 10, 2);
 
 function custom_gift_card_price_html($price, $product) {
@@ -139,31 +138,6 @@ function custom_gift_card_price_html($price, $product) {
     }
   }
   return $price;
-}
- 
-add_filter('woocommerce_add_cart_item_data', 'add_custom_price_to_cart_item', 10, 2);
-
-function add_custom_price_to_cart_item($cart_item_data, $product_id) {
-  if (isset($_POST['custom_gift_card_price'])) {
-    $cart_item_data['custom_gift_card_price'] = sanitize_text_field($_POST['custom_gift_card_price']);
-  }
-  return $cart_item_data;
-}
-
-
-/** 
- * Set custom gift card amount before add to cart
- */
-add_filter('woocommerce_add_cart_item_data', 'add_custom_gift_card_price_to_cart', 10, 2);
-function add_custom_gift_card_price_to_cart($cart_item_data, $product_id) {
-    if (isset($_POST['gift_card_value'])) {
-        $gift_card_value = sanitize_text_field($_POST['gift_card_value']);
-        if ($gift_card_value == 'custom_amount') {
-            $gift_card_value = floatval($_POST['custom_amount_input']);
-        }
-        $cart_item_data['gift_card_value'] = $gift_card_value;
-    }
-    return $cart_item_data;
 }
 
 
@@ -191,6 +165,7 @@ function add_gift_card_to_cart() {
   $product_type = isset($_POST['product_type']) ? sanitize_text_field($_POST['product_type']) : '';
   $gift_card_value = isset($_POST['gift_card_value']) ? sanitize_text_field($_POST['gift_card_value']) : '';
   $custom_amount = isset($_POST['custom_gift_card_price']) ? floatval($_POST['custom_gift_card_price']) : 100;
+  $gift_card_value_final = $gift_card_value === 'custom_amount' ? $custom_amount : $gift_card_value;
   $receiver_firstname = isset($_POST['receiver_firstname']) ? sanitize_text_field($_POST['receiver_firstname']) : '';
   $receiver_lastname = isset($_POST['receiver_lastname']) ? sanitize_text_field($_POST['receiver_lastname']) : '';
   $receiver_email = isset($_POST['receiver_email']) ? sanitize_email($_POST['receiver_email']) : '';
@@ -241,7 +216,7 @@ function add_gift_card_to_cart() {
 
   // Prepare custom cart item data
   $cart_item_data = array(
-    'gift_card_value' => $gift_card_value === 'custom_amount' ? $custom_amount : $gift_card_value,
+    'gift_card_value' => $gift_card_value_final,
     'receiver_firstname' => $receiver_firstname,
     'receiver_lastname' => $receiver_lastname,
     'receiver_email' => $receiver_email,
@@ -291,4 +266,52 @@ function add_gift_card_to_cart() {
 
   wp_send_json($response);
   wp_die();
+}
+
+
+/** 
+ * Replace the price with the gift card value
+ */
+add_filter('woocommerce_cart_item_price', 'custom_display_gift_card_price', 10, 3);
+
+function custom_display_gift_card_price($price, $cart_item, $cart_item_key) {
+  if (isset($cart_item['gift_card_value'])) {
+    // Replace the price with the gift card value
+    $gift_card_value = wc_clean($cart_item['gift_card_value']);
+    $price = wc_price($gift_card_value); // Formats the value as a price
+  }
+  return $price;
+}
+
+
+// /** 
+//  * Display Custom Data in Cart
+//  */
+// add_filter('woocommerce_get_item_data', 'display_gift_card_item_data', 10, 2);
+
+// function display_gift_card_item_data($item_data, $cart_item) {
+//   if (isset($cart_item['gift_card_value'])) {
+//     $item_data[] = array(
+//       'key'     => __('Gift Card Value', 'giftcardify_for_woocommerce'),
+//       'value'   => wc_clean($cart_item['gift_card_value']),
+//       'display' => wc_clean($cart_item['gift_card_value']),
+//     );
+//   }
+//   return $item_data;
+// }
+
+
+/**
+ * Adjust subtotal with gift_card_value
+ */
+add_filter('woocommerce_cart_item_subtotal', 'custom_display_gift_card_subtotal', 10, 3);
+
+function custom_display_gift_card_subtotal($subtotal, $cart_item, $cart_item_key) {
+  if (isset($cart_item['gift_card_value'])) {
+    // Replace the subtotal with the gift card value times the quantity
+    $gift_card_value = wc_clean($cart_item['gift_card_value']);
+    $quantity = $cart_item['quantity'];
+    $subtotal = wc_price($gift_card_value * $quantity); // Calculates the subtotal
+  }
+  return $subtotal;
 }
