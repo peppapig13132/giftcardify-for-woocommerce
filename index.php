@@ -141,6 +141,19 @@ function custom_gift_card_price_html($price, $product) {
 }
 
 
+/**
+ * Import single product gift card template style
+ */
+add_action('wp_enqueue_scripts', 'enqueue_single_product_gift_card_styles');
+
+function enqueue_single_product_gift_card_styles() {
+  if (is_singular('product')) {
+    $timestamp = Date('U');
+    wp_enqueue_style('single-product-gift-card-style', plugin_dir_url(__FILE__) . 'assets/css/single-product-gift_card.css?' . $timestamp);
+  }
+}
+
+
 /** 
  * Add gift card to cart - Ajax
  */
