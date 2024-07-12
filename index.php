@@ -307,7 +307,7 @@ function custom_display_gift_card_price($price, $cart_item, $cart_item_key) {
 add_action('woocommerce_cart_loaded_from_session', 'custom_gift_card_before_calculate_totals', 10, 1);
 function custom_gift_card_before_calculate_totals($cart) {
   foreach ($cart->get_cart() as $cart_item_key => $cart_item) {
-    if (isset($cart_item['gift_card_value'])) {error_log('-----------------------');
+    if (isset($cart_item['gift_card_value'])) {
       $cart_item['data']->set_price($cart_item['gift_card_value']);
       $cart_item['data']->set_regular_price($cart_item['gift_card_value']);
     }
