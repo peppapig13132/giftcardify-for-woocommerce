@@ -18,4 +18,9 @@ Gift message
 Shipping date
 ```
 
+- [x] Purchase a gift card - cart page, checkout page
+- [ ] Send gift message after payment process is completed - background
+- [ ] Cron job to delive gift messagess - background
+- [ ] Buy product with a gift card
+
 ## How to use GiftCardify?

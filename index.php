@@ -301,66 +301,15 @@ function custom_display_gift_card_price($price, $cart_item, $cart_item_key) {
 // }
 
 
-/**
- * Adjust subtotal with gift_card_value
- */
-add_filter('woocommerce_cart_item_subtotal', 'custom_display_gift_card_subtotal', 10, 3);
-
-function custom_display_gift_card_subtotal($subtotal, $cart_item, $cart_item_key) {
-  if (isset($cart_item['gift_card_value'])) {
-    // Replace the subtotal with the gift card value times the quantity
-    $gift_card_value = wc_clean($cart_item['gift_card_value']);
-    $quantity = $cart_item['quantity'];
-    $subtotal = wc_price($gift_card_value * $quantity); // Calculates the subtotal
-  }
-  return $subtotal;
-}
-
-
-/**
- * Adjust cart subtotals
- * If you need to adjust discount, read "line_total" and "line_subtotal"
- */
-add_filter('woocommerce_cart_subtotal', 'custom_cart_subtotal', 10, 3);
-
-function custom_cart_subtotal($cart_subtotal, $compound, $cart) {
-  $new_subtotal = 0;
-
-  // Loop through each cart item to calculate the custom subtotal
+// /**
+//  * Adjust cart clist, subtotal, cart total with gift_card_value
+//  */
+add_action('woocommerce_cart_loaded_from_session', 'custom_gift_card_before_calculate_totals', 10, 1);
+function custom_gift_card_before_calculate_totals($cart) {
   foreach ($cart->get_cart() as $cart_item_key => $cart_item) {
     if (isset($cart_item['gift_card_value'])) {
-      // Get the gift card value and calculate the item subtotal
-      $gift_card_value = wc_clean($cart_item['gift_card_value']);
-      $quantity = $cart_item['quantity'];
-      $item_subtotal = $gift_card_value * $quantity;
-    } else {
-      // Use the regular price if it's not a gift card
-      $item_subtotal = $cart_item['line_subtotal'];
-    }
-    $new_subtotal += $item_subtotal;
-  }
-
-  // Format the new subtotal as a price
-  return wc_price($new_subtotal);
-}
-
-
-/**
- * Adjust the coupon discount calculation.
- */
-add_filter('woocommerce_coupon_get_discount_amount', 'adjust_coupon_discount_amount', 10, 5);
-function adjust_coupon_discount_amount($discount, $discounting_amount, $cart_item, $single, $coupon) {
-  if ($coupon->get_discount_type() == 'percent') {
-    $discount_rate = $coupon->get_amount() / 100;
-
-    // Calculate the discount based on gift card values
-    if (isset($cart_item['gift_card_value'])) {
-      $gift_card_value = wc_clean($cart_item['gift_card_value']);
-      $regular_price = $cart_item['data']->get_regular_price();
-      $quantity = $cart_item['quantity'];
-      $discount += ($gift_card_value * $quantity * $discount_rate) - ($regular_price * $quantity * $discount_rate);
+      $cart_item['data']->set_price($cart_item['gift_card_value']);
+      $cart_item['data']->set_regular_price($cart_item['gift_card_value']);
     }
   }
-
-  return $discount;
 }
