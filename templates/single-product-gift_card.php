@@ -26,11 +26,10 @@ while (have_posts()) :
       </div>
     </div>
 
-    <div class="single-product-gift-card-discount">
-      <span>10% Discount</span>
-    </div>
-
     <div class="single-product-gift-card-form">
+      <div class="single-product-gift-card-discount">
+        <span>10% Discount</span>
+      </div>
 
       <form class="cart" method="post" id="gift_card_form" enctype="multipart/form-data">
         <input type="hidden" name="post_id" value="<?php echo $product->get_id(); ?>">
@@ -99,6 +98,16 @@ while (have_posts()) :
 
         <?php do_action('woocommerce_after_add_to_cart_button'); ?>
       </form>
+        
+      <div class="single-product-gift-card-form__footer">
+        <p class="text-xl">LISTERN TO YOUR SOUL</p>
+        <p class="text-lg">TO HEAR THE SILENCE</p>
+
+        <p class="gift-card-condition">
+          * Conditions:<br/>
+          Gift Card can only be used at: <a href="https://www.ltysoul.com">www.ltysoul.com</a> effective for 1 year.
+        </p>
+      </div>
     </div>
 
   </div>

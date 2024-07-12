@@ -32,11 +32,8 @@
 }
 
 .single-product-gift-card-discount {
-  max-width: 500px;
-  margin-left: auto;
   margin-right: auto;
-  padding: 20px 10px 0;
-  text-align: left;
+  padding: 20px 20px 0;
 }
 .single-product-gift-card-discount span {
   font-size: 1.5rem;
@@ -46,8 +43,9 @@
 .single-product-gift-card-form {
   max-width: 500px;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
   margin: 0 auto;
+  align-items: center;
 }
 .single-product-gift-card-form .gift-card-price {
   width: 240px;
@@ -90,4 +88,23 @@
   font-size: 1.5rem !important;
   font-weight: 300 !important;
   color: #eee !important;
+}
+.single-product-gift-card-form .single-product-gift-card-form__footer p {
+  margin: 0;
+  text-align: center;
+}
+.single-product-gift-card-form .single-product-gift-card-form__footer .text-xl {
+  font-size: 1.5rem
+}
+.single-product-gift-card-form .single-product-gift-card-form__footer .text-lg {
+  font-size: 1.25rem
+}
+.single-product-gift-card-form .single-product-gift-card-form__footer p.gift-card-condition {
+  text-align: left;
+  padding: 50px 30px 220px;
+}
+.single-product-gift-card-form .single-product-gift-card-form__footer p.gift-card-condition a {
+  text-decoration: none;
+  font-weight: 500;
+  color: unset;
 }
