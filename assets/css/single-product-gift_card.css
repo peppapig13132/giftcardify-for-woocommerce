@@ -1,0 +1,93 @@
+.single-product-gift-card-image {
+  width: calc(100vw - 40px);
+  max-width: 480px;
+  margin: 30px auto 0;
+  display: flex;
+  justify-content: center;
+}
+.single-product-gift-card-image .image-container {
+  width: 100%;
+  background: #222;
+  color: #eee;
+  border-radius: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  row-gap: 20px;
+  align-items: center;
+  padding: 25px 0;
+}
+@media (max-width: 768px) {
+  .single-product-gift-card-image {
+    margin-top: 15px;
+  }
+}
+.single-product-gift-card-image .image-container .gift-card-title h1 {
+  font-weight: 400 !important;
+}
+.single-product-gift-card-image .image-container .gift-card-image {
+  text-align: center;
+}
+.single-product-gift-card-image .image-container .gift-card-image img {
+  width: 80%;
+}
+
+.single-product-gift-card-discount {
+  max-width: 500px;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 20px 10px 0;
+  text-align: left;
+}
+.single-product-gift-card-discount span {
+  font-size: 1.5rem;
+  margin-top: 30px;
+}
+
+.single-product-gift-card-form {
+  max-width: 500px;
+  display: flex;
+  justify-content: center;
+  margin: 0 auto;
+}
+.single-product-gift-card-form .gift-card-price {
+  width: 240px;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 20px 0;
+}
+.single-product-gift-card-form .gift-card-price .gift-card-price-presets {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.single-product-gift-card-form .gift-card-price .gift-card-price-custom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+}
+.single-product-gift-card-form .gift-card-price .gift-card-price-custom #custom_amount_input {
+  display: block !important;
+  width: 100px;
+}
+.single-product-gift-card-form .gift-card-content {
+  padding-bottom: 10px;
+}
+.single-product-gift-card-form .gift-card-content input,
+.single-product-gift-card-form .gift-card-content textarea {
+  width: 480px;
+}
+@media (max-width: 768px) {
+  .single-product-gift-card-form .gift-card-content input,
+  .single-product-gift-card-form .gift-card-content textarea {
+    width: calc(100vw - 50px);
+  }
+}
+.single-product-gift-card-form .single_add_to_cart_button {
+  width: 100%;
+  padding: 15px !important;
+  background-color: #222 !important;
+  font-size: 1.5rem !important;
+  font-weight: 300 !important;
+  color: #eee !important;
+}
