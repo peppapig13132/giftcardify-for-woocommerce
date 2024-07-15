@@ -2,7 +2,11 @@
 
 💡 The plugin is in development stage.
 
-## How does GiftCardify work?
+<div align="center">
+<img src="https://raw.githubusercontent.com/peppapig13132/GiftCardify-for-WooCommerce/main/assets/images/others/Gift-card.png"  alt="giftcard">
+</div>
+
+## Key Features
 
 Gift card form includes:
 ```
@@ -23,3 +27,8 @@ Shipping date
 - [ ] Buy product with a gift card
 
 ## How to use GiftCardify?
+
+## Screenshots
+- Single Product Gift Card page: [Click here](https://github.com/peppapig13132/GiftCardify-for-WooCommerce/blob/main/assets/images/others/single-product-gift-card.png)
+- Custom order complete notification email: [Click here](https://github.com/peppapig13132/GiftCardify-for-WooCommerce/blob/main/assets/images/others/custom-order-completed-email-html.png)
+- Gift card received notification email: [Click here](https://github.com/peppapig13132/GiftCardify-for-WooCommerce/blob/main/assets/images/others/gift-card-received-email-html.png)
