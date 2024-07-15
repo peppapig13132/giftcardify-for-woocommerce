@@ -110,7 +110,7 @@ function load_custom_gift_card_template($template) {
     $product = wc_get_product($post->ID);
 
     if ($product && $product->get_type() == 'gift_card') {
-      $custom_template = plugin_dir_path(__FILE__) . 'templates/single-product-gift_card.php';
+      $custom_template = plugin_dir_path(__FILE__) . 'templates/single-product/gift-card.php';
       
       if (file_exists($custom_template)) {
         return $custom_template;
@@ -318,6 +318,7 @@ function custom_display_gift_card_price($price, $cart_item, $cart_item_key) {
 //  * Adjust cart clist, subtotal, cart total with gift_card_value
 //  */
 add_action('woocommerce_cart_loaded_from_session', 'custom_gift_card_before_calculate_totals', 10, 1);
+
 function custom_gift_card_before_calculate_totals($cart) {
   foreach ($cart->get_cart() as $cart_item_key => $cart_item) {
     if (isset($cart_item['gift_card_value'])) {
