@@ -327,3 +327,101 @@ function custom_gift_card_before_calculate_totals($cart) {
     }
   }
 }
+
+add_action('woocommerce_checkout_order_processed', 'giftcardify_order_created', 10, 3);
+
+function giftcardify_order_created($order_id, $posted_data, $order) {
+  // About $order: https://www.businessbloomer.com/woocommerce-easily-get-order-info-total-items-etc-from-order-object/
+
+  // Send custom order email
+  $to = $order->get_billing_email();
+  $subject = 'Your Order is Complete';
+  $placeholders = array(
+    'name'            => $order->get_billing_first_name() . ' ' . $order->get_billing_last_name(),
+    'order_id'        => $order_id,
+    'product_list'    => $order->get_items(),
+    'subtotal'        => wc_price($order->get_subtotal()),
+    'discount'        => wc_price($order->get_discount_total()),
+    'total'           => wc_price($order->get_total()),
+    'billing_email'   => $order->get_billing_email(),
+    'assets_path'     => plugin_dir_url(__FILE__)
+  );
+  
+  send_customorder_created_email($to, $subject, $placeholders);
+
+  // Send gift card received email if the order includes gift card
+
+}
+
+
+function get_order_created_email_template($template_path, $placeholders) {
+  if(!file_exists($template_path)) {
+    return '';
+  }
+
+  $template_content = file_get_contents($template_path);
+  
+  if(isset($placeholders['product_list']) && is_array($placeholders['product_list'])) {
+    $product_list_html = '<table style="width: 100%;">
+      <tbody>';
+      foreach($placeholders['product_list'] as $item_id => $item) {
+        $product_id = $item->get_product_id();
+        $variation_id = $item->get_variation_id();
+        $product = $item->get_product();
+
+        $thumbnail = get_the_post_thumbnail_url($product_id, 'thumbnail');
+
+        if ($variant_id) {
+          $thumbnail = wp_get_attachment_image_url(get_post_thumbnail_id($variant_id), 'thumbnail');
+        }
+
+        $product_list_html .=
+        '<tr>
+          <td style="min-width: 100px; max-width: 200px; width: 30%; padding-bottom: 20px;">
+            <a href="' . get_permalink($product_id) . '">
+              <img src="' . $thumbnail . '" style="width: 100%;" alt="' . $item->get_name() . '">
+            </a>
+          </td>
+          <td style="padding-left: 10px; padding-bottom: 20px;">
+            <a href="' . get_permalink($product_id) . '" style="text-decoration: none; color: unset;">
+              <div>
+                <table style="width: 100%;">
+                  <tr>
+                    <td>' . $item->get_name() . '</td>
+                    <td style="vertical-align: top; width: 50px; text-align: right;">' . wc_price($item->get_subtotal()) . '</td>
+                  </tr>
+                </table>
+              </div>
+              <div style="margin-top: 5px;">' . $product->get_attribute('pa_color') . '</div>
+              <div style="margin-top: 5px;">' . $product->get_attribute('pa_size') . '</div>
+              <div style="margin-top: 5px;">' . $item->get_quantity() . '</div>
+            </a>
+          </td>
+        </tr>';
+      }
+      $product_list_html .=
+      '</tbody>
+    </table>';
+
+    $template_content = str_replace('{{PRODUCT_LIST}}', $product_list_html, $template_content);
+    unset($placeholders['product_list']);
+  }
+
+  foreach ($placeholders as $key => $value) {
+    $template_content = str_replace('{{' . strtoupper($key) . '}}', $value, $template_content);
+  }
+
+  return $template_content;
+}
+
+
+function send_customorder_created_email($to, $subject, $placeholders) {
+  $template_path = plugin_dir_path(__FILE__) . 'templates/emails/custom-order-created-email.php';
+
+  $message = get_order_created_email_template($template_path, $placeholders);
+  
+  $headers = array('Content-Type: text/html; charset=UTF-8');
+  $headers[] = 'From: Listen To Your Soul <admin@ltysoul.com>';
+
+  wp_mail($to, $subject, $message, $headers);
+}
