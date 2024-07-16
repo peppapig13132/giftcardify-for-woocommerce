@@ -227,15 +227,19 @@ function add_gift_card_to_cart() {
 
   // Optionally, validate sender name, gift message, and shipping date as needed
 
+  // Use gift card code generate function here
+  $gift_card_code = 'LTYS-999-99';
+
   // Prepare custom cart item data
   $cart_item_data = array(
-    'gift_card_value' => $gift_card_value_final,
-    'receiver_firstname' => $receiver_firstname,
-    'receiver_lastname' => $receiver_lastname,
-    'receiver_email' => $receiver_email,
-    'sender_name' => $sender_name,
-    'gift_message' => $gift_message,
-    'shipping_date' => $shipping_date,
+    'gift_card_value'     => $gift_card_value_final,
+    'receiver_firstname'  => $receiver_firstname,
+    'receiver_lastname'   => $receiver_lastname,
+    'receiver_email'      => $receiver_email,
+    'sender_name'         => $sender_name,
+    'gift_card_code'      => $gift_card_code,
+    'gift_message'        => $gift_message,
+    'shipping_date'       => $shipping_date,
   );
 
   // Check if product is purchasable
@@ -282,6 +286,53 @@ function add_gift_card_to_cart() {
 }
 
 
+/**
+ * Add custom data - Gift card form data to order
+ */
+add_action('woocommerce_checkout_create_order_line_item', 'save_custom_data_to_order_item', 10, 4);
+
+function save_custom_data_to_order_item($item, $cart_item_key, $values, $order) {
+  if (isset($values['gift_card_value'])) { // Define if this item is gift card
+    $item->add_meta_data('receiver_firstname', $values['receiver_firstname']);
+    $item->add_meta_data('receiver_lastname', $values['receiver_lastname']);
+    $item->add_meta_data('receiver_email', $values['receiver_email']);
+    $item->add_meta_data('sender_name', $values['sender_name']);
+    $item->add_meta_data('gift_card_code', $values['gift_card_code']);
+    $item->add_meta_data('gift_message', $values['gift_message']);
+    $item->add_meta_data('shipping_date', $values['shipping_date']);
+    $item->add_meta_data('gift_card_value', $values['gift_card_value']);
+  }
+}
+
+
+/**
+ * Hide gift card form data on order table
+ */
+add_filter('woocommerce_order_item_get_formatted_meta_data', 'hide_custom_meta_data_from_order', 10, 2);
+
+function hide_custom_meta_data_from_order($formatted_meta, $order_item) {
+  // Define the meta keys you want to hide
+  $meta_keys_to_hide = array(
+    'receiver_firstname',
+    'receiver_lastname',
+    'receiver_email',
+    'sender_name',
+    'gift_card_code',
+    'gift_message',
+    'shipping_date',
+    'gift_card_value'
+  );
+
+  foreach ($formatted_meta as $key => $meta) {
+    if (in_array($meta->key, $meta_keys_to_hide)) {
+      unset($formatted_meta[$key]);
+    }
+  }
+
+  return $formatted_meta;
+}
+
+
 /** 
  * Replace the price with the gift card value
  */
@@ -314,9 +365,9 @@ function custom_display_gift_card_price($price, $cart_item, $cart_item_key) {
 // }
 
 
-// /**
-//  * Adjust cart clist, subtotal, cart total with gift_card_value
-//  */
+/**
+ * Adjust cart clist, subtotal, cart total with gift_card_value
+ */
 add_action('woocommerce_cart_loaded_from_session', 'custom_gift_card_before_calculate_totals', 10, 1);
 
 function custom_gift_card_before_calculate_totals($cart) {
@@ -326,4 +377,166 @@ function custom_gift_card_before_calculate_totals($cart) {
       $cart_item['data']->set_regular_price($cart_item['gift_card_value']);
     }
   }
+}
+
+add_action('woocommerce_checkout_order_processed', 'giftcardify_order_created', 10, 3);
+
+function giftcardify_order_created($order_id, $posted_data, $order) {
+  // About $order: https://www.businessbloomer.com/woocommerce-easily-get-order-info-total-items-etc-from-order-object/
+
+  // Send custom order email
+  $to = $order->get_billing_email();
+  $subject = 'Your Order is Complete';
+  $placeholders = array(
+    'name'            => $order->get_billing_first_name() . ' ' . $order->get_billing_last_name(),
+    'order_id'        => $order_id,
+    'product_list'    => $order->get_items(),
+    'subtotal'        => wc_price($order->get_subtotal()),
+    'discount'        => wc_price($order->get_discount_total()),
+    'total'           => wc_price($order->get_total()),
+    'billing_email'   => $order->get_billing_email(),
+    'assets_path'     => plugin_dir_url(__FILE__)
+  );
+  
+  send_custom_order_created_email($to, $subject, $placeholders);
+
+  // Send gift card received email if the order includes gift card
+  $has_gift_card = false;
+
+  foreach ($order->get_items() as $item_id => $item) {
+    $product = $item->get_product();
+
+    if ($product && $product->get_type() === 'gift_card') {
+      $has_gift_card = true;
+      
+      if($has_gift_card) {
+        $receiver_firstname = $item->get_meta('receiver_firstname');
+        $receiver_lastname = $item->get_meta('receiver_lastname');
+        $receiver_email = $item->get_meta('receiver_email');
+        $sender_name = $item->get_meta('sender_name');
+        $gift_card_code = $item->get_meta('gift_card_code');
+        $gift_message = $item->get_meta('gift_message');
+        $shipping_date = $item->get_meta('shipping_date');
+        $gift_card_value = $item->get_meta('gift_card_value');
+
+        // available_data = shipping_date + 1 year
+        $date = new DateTime($shipping_date);
+        $date->modify('+1 year');
+        $available_date = $date->format('Y-m-d');
+        
+        $g_to = $order->get_billing_email();
+        $g_subject = 'You Received a Gift Card';
+        $g_placeholders = array(
+          'receiver_name'    => $receiver_firstname . ' ' . $receiver_lastname,
+          'sender_name'      => $sender_name,
+          'gift_card_code'   => $gift_card_code,
+          'gift_message'     => $gift_message,
+          'available_date'   => $available_date, 
+          'assets_path'      => plugin_dir_url(__FILE__)
+        );
+
+        send_gift_card_received_email($g_to, $g_subject, $g_placeholders);
+      }
+    }
+  }
+}
+
+
+function get_order_created_email_template($template_path, $placeholders) {
+  if(!file_exists($template_path)) {
+    return '';
+  }
+
+  $template_content = file_get_contents($template_path);
+  
+  if(isset($placeholders['product_list']) && is_array($placeholders['product_list'])) {
+    $product_list_html = '<table style="width: 100%;">
+      <tbody>';
+      foreach($placeholders['product_list'] as $item_id => $item) {
+        $product_id = $item->get_product_id();
+        $variation_id = $item->get_variation_id();
+        $product = $item->get_product();
+
+        $thumbnail = get_the_post_thumbnail_url($product_id, 'thumbnail');
+
+        if ($variation_id) {
+          $thumbnail = wp_get_attachment_image_url(get_post_thumbnail_id($variation_id), 'thumbnail');
+        }
+
+        $product_list_html .=
+        '<tr>
+          <td style="min-width: 100px; max-width: 200px; width: 30%; padding-bottom: 20px;">
+            <a href="' . get_permalink($product_id) . '">
+              <img src="' . $thumbnail . '" style="width: 100%;" alt="' . $item->get_name() . '">
+            </a>
+          </td>
+          <td style="padding-left: 10px; padding-bottom: 20px;">
+            <a href="' . get_permalink($product_id) . '" style="text-decoration: none; color: unset;">
+              <div>
+                <table style="width: 100%;">
+                  <tr>
+                    <td>' . $item->get_name() . '</td>
+                    <td style="vertical-align: top; width: 50px; text-align: right;">' . wc_price($item->get_subtotal()) . '</td>
+                  </tr>
+                </table>
+              </div>
+              <div style="margin-top: 5px;">' . $product->get_attribute('pa_color') . '</div>
+              <div style="margin-top: 5px;">' . $product->get_attribute('pa_size') . '</div>
+              <div style="margin-top: 5px;">' . $item->get_quantity() . '</div>
+            </a>
+          </td>
+        </tr>';
+      }
+      $product_list_html .=
+      '</tbody>
+    </table>';
+
+    $template_content = str_replace('{{PRODUCT_LIST}}', $product_list_html, $template_content);
+    unset($placeholders['product_list']);
+  }
+
+  foreach ($placeholders as $key => $value) {
+    $template_content = str_replace('{{' . strtoupper($key) . '}}', $value, $template_content);
+  }
+
+  return $template_content;
+}
+
+
+function send_custom_order_created_email($to, $subject, $placeholders) {
+  $template_path = plugin_dir_path(__FILE__) . 'templates/emails/custom-order-created-email.php';
+
+  $message = get_order_created_email_template($template_path, $placeholders);
+  
+  $headers = array('Content-Type: text/html; charset=UTF-8');
+  $headers[] = 'From: Listen To Your Soul <admin@ltysoul.com>';
+
+  wp_mail($to, $subject, $message, $headers);
+}
+
+
+function get_gift_card_received_email_template($template_path, $placeholders) {
+  if(!file_exists($template_path)) {
+    return '';
+  }
+
+  $template_content = file_get_contents($template_path);
+
+  foreach ($placeholders as $key => $value) {
+    $template_content = str_replace('{{' . strtoupper($key) . '}}', $value, $template_content);
+  }
+
+  return $template_content;
+}
+
+
+function send_gift_card_received_email($to, $subject, $placeholders) {
+  $template_path = plugin_dir_path(__FILE__) . 'templates/emails/gift-card-received-email.php';
+
+  $message = get_order_created_email_template($template_path, $placeholders);
+  
+  $headers = array('Content-Type: text/html; charset=UTF-8');
+  $headers[] = 'From: Listen To Your Soul <admin@ltysoul.com>';
+
+  wp_mail($to, $subject, $message, $headers);
 }
