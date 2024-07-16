@@ -15,6 +15,7 @@ if (!defined('WPINC')) {
 /**
  * Include require files
  */
+require_once(plugin_dir_path(__FILE__) . 'includes/class/giftcardify-giftcard.php');
 
 
 /**
@@ -245,8 +246,24 @@ function add_gift_card_to_cart() {
 
   // Optionally, validate sender name, gift message, and shipping date as needed
 
+  // Save gift card data into giftcardify's gift card table
+  $giftcard = new GiftCardify_GiftCard();
+
   // Use gift card code generate function here
-  $gift_card_code = 'LTYS-999-99';
+  $gift_card_code = $giftcard->create_giftcard(
+    $receiver_firstname,
+    $receiver_lastname,
+    $receiver_email,
+    $sender_name,
+    '',
+    $gift_message,
+    $gift_card_value_final,
+    $shipping_date
+  );
+
+  if(false === $gift_card_code) {
+    return;
+  }
 
   // Prepare custom cart item data
   $cart_item_data = array(

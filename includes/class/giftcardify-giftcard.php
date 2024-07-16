@@ -165,6 +165,34 @@ class GiftCardify_GiftCard {
   }
 
   private function generate_gift_card_code() {
-    return 'YOUR_GIFT_CARD_CODE';
+    $gift_card_code = '';
+
+    do {
+      // If you're planning 100,000 gift cards to sell, set it 9,999,999 = 100,000 x 10e3 -1
+      $random_number = mt_rand(1, 9999999);
+      $padded_number = str_pad($random_number, 7, '0', STR_PAD_LEFT);
+      $formatted_number = substr($padded_number, 0, 4) . '-' . substr($padded_number, 4);
+      $temp_code = 'LTYS-' . $formatted_number;
+
+      $gift_card_code = $temp_code;
+    } while(!$this->is_unique_code($gift_card_code))
+
+    return $gift_card_code;
+  }
+
+  private function is_unique_code($gift_card_code) {
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'giftcardify_gift_cards';
+
+    $query = $wpdb->prepare(
+      "SELECT *
+      FROM $table
+      WHERE gift_card_code = %s",
+      $temp_code
+    );
+
+    $result = $wpdb->get_results($query);
+
+    return empty($result);
   }
 }
