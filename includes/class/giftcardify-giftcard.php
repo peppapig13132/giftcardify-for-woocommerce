@@ -168,14 +168,14 @@ class GiftCardify_GiftCard {
     $gift_card_code = '';
 
     do {
-      // If you're planning 100,000 gift cards to sell, set it 9,999,999 = 100,000 x 10e3 -1
+      // If you're planning 100,000 gift cards to sell, set random maximum as 9,999,999(= 100,000 x 10e3 - 1)
       $random_number = mt_rand(1, 9999999);
       $padded_number = str_pad($random_number, 7, '0', STR_PAD_LEFT);
       $formatted_number = substr($padded_number, 0, 4) . '-' . substr($padded_number, 4);
       $temp_code = 'LTYS-' . $formatted_number;
 
       $gift_card_code = $temp_code;
-    } while(!$this->is_unique_code($gift_card_code))
+    } while(!$this->is_unique_code($gift_card_code));
 
     return $gift_card_code;
   }
