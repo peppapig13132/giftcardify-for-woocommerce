@@ -22,7 +22,13 @@ if (!defined('WPINC')) {
  */
 register_activation_hook(__FILE__, 'giftcardify_activation');
 
-function giftcardify_activation() {}
+function giftcardify_activation() {
+  // Create tables
+  require_once(plugin_dir_path(__FILE__) . 'database/db-setup.php');
+  
+  dbDelta($sql_gift_cards);
+  dbDelta($sql_gift_card_logs);
+}
 
 
 /**
@@ -30,7 +36,19 @@ function giftcardify_activation() {}
  */
 register_deactivation_hook(__FILE__, 'giftcardify_deactivation');
 
-function giftcardify_deactivation() {}
+function giftcardify_deactivation() {
+  // Drop tables - use this script only in development mode
+  global $wpdb;
+
+  $table_name_gift_cards = $wpdb->prefix . 'giftcardify_gift_cards';
+  $table_name_gift_card_logs = $wpdb->prefix . 'giftcardify_gift_card_logs';
+
+  $sql_delete_gift_cards = "DROP TABLE IF EXISTS $table_name_gift_cards";
+  $sql_delete_gift_card_logs = "DROP TABLE IF EXISTS $table_name_gift_card_logs";
+
+  $wpdb->query($sql_delete_gift_cards);
+  $wpdb->query($sql_delete_gift_card_logs);
+}
 
 
 /** 
