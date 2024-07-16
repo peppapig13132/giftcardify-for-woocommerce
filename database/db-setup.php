@@ -29,5 +29,5 @@ $sql_gift_card_logs = "CREATE TABLE IF NOT EXISTS $table_name_giftcard_logs (
   gift_card_id INT NOT NULL,
   product_order_id INT NOT NULL,
   amount INT NOT NULL,
-  created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) $charset_collate;";
