@@ -128,6 +128,9 @@ class GiftCardify_GiftCard {
 
           // Update gift card status
           $this->update_gift_card_status($gift_card_id, 'used');
+
+          // Update sent_at if needed
+          // ...
         }
       }
     }
@@ -141,7 +144,8 @@ class GiftCardify_GiftCard {
     $query = $wpdb->prepare(
       "UPDATE $table_name 
        SET gift_card_status = 'expired', expired_at = NOW()
-       WHERE DATE_ADD(shipping_at, INTERVAL 1 YEAR) <= NOW() 
+       WHERE gift_card_status != 'expired'
+       AND DATE_ADD(shipping_at, INTERVAL 1 YEAR) <= NOW()
        AND gift_card_status != 'expired'"
     );
 
@@ -155,7 +159,8 @@ class GiftCardify_GiftCard {
     $query = $wpdb->prepare(
       "SELECT *
       FROM $table_name
-      WHERE gift_card_code = %s",
+      WHERE gift_card_code = %s
+      AND gift_card_status != 'expired'",
       $gift_card_code
     );
 
@@ -192,6 +197,8 @@ class GiftCardify_GiftCard {
       // Update gift card status
       $this->update_gift_card_status($gift_card_id, 'sent');
     }
+
+    $gift_card->expire_giftcards();
   }
 
   private function get_gift_messages_to_send() {
