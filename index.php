@@ -433,47 +433,47 @@ function giftcardify_order_created($order_id, $posted_data, $order) {
     'assets_path'     => plugin_dir_url(__FILE__)
   );
   
-  send_custom_order_created_email($to, $subject, $placeholders);
+  send_custom_order_created_wp_email($to, $subject, $placeholders);
 
-  // Send gift card received email if the order includes gift card
-  $has_gift_card = false;
+  // // Send gift card received email if the order includes gift card
+  // $has_gift_card = false;
 
-  foreach ($order->get_items() as $item_id => $item) {
-    $product = $item->get_product();
+  // foreach ($order->get_items() as $item_id => $item) {
+  //   $product = $item->get_product();
 
-    if ($product && $product->get_type() === 'gift_card') {
-      $has_gift_card = true;
+  //   if ($product && $product->get_type() === 'gift_card') {
+  //     $has_gift_card = true;
       
-      if($has_gift_card) {
-        $receiver_firstname = $item->get_meta('receiver_firstname');
-        $receiver_lastname = $item->get_meta('receiver_lastname');
-        $receiver_email = $item->get_meta('receiver_email');
-        $sender_name = $item->get_meta('sender_name');
-        $gift_card_code = $item->get_meta('gift_card_code');
-        $gift_message = $item->get_meta('gift_message');
-        $shipping_date = $item->get_meta('shipping_date');
-        $gift_card_value = $item->get_meta('gift_card_value');
+  //     if($has_gift_card) {
+  //       $receiver_firstname = $item->get_meta('receiver_firstname');
+  //       $receiver_lastname = $item->get_meta('receiver_lastname');
+  //       $receiver_email = $item->get_meta('receiver_email');
+  //       $sender_name = $item->get_meta('sender_name');
+  //       $gift_card_code = $item->get_meta('gift_card_code');
+  //       $gift_message = $item->get_meta('gift_message');
+  //       $shipping_date = $item->get_meta('shipping_date');
+  //       $gift_card_value = $item->get_meta('gift_card_value');
 
-        // available_data = shipping_date + 1 year
-        $date = new DateTime($shipping_date);
-        $date->modify('+1 year');
-        $available_date = $date->format('Y-m-d');
+  //       // available_data = shipping_date + 1 year
+  //       $date = new DateTime($shipping_date);
+  //       $date->modify('+1 year');
+  //       $available_date = $date->format('Y-m-d');
         
-        $g_to = $order->get_billing_email();
-        $g_subject = 'You Received a Gift Card';
-        $g_placeholders = array(
-          'receiver_name'    => $receiver_firstname . ' ' . $receiver_lastname,
-          'sender_name'      => $sender_name,
-          'gift_card_code'   => $gift_card_code,
-          'gift_message'     => $gift_message,
-          'available_date'   => $available_date, 
-          'assets_path'      => plugin_dir_url(__FILE__)
-        );
+  //       $g_to = $order->get_billing_email();
+  //       $g_subject = 'You Received a Gift Card';
+  //       $g_placeholders = array(
+  //         'receiver_name'    => $receiver_firstname . ' ' . $receiver_lastname,
+  //         'sender_name'      => $sender_name,
+  //         'gift_card_code'   => $gift_card_code,
+  //         'gift_message'     => $gift_message,
+  //         'available_date'   => $available_date, 
+  //         'assets_path'      => plugin_dir_url(__FILE__)
+  //       );
 
-        send_gift_card_received_email($g_to, $g_subject, $g_placeholders);
-      }
-    }
-  }
+  //       send_gift_card_received_wp_email($g_to, $g_subject, $g_placeholders);
+  //     }
+  //   }
+  // }
 }
 
 
@@ -538,7 +538,7 @@ function get_order_created_email_template($template_path, $placeholders) {
 }
 
 
-function send_custom_order_created_email($to, $subject, $placeholders) {
+function send_custom_order_created_wp_email($to, $subject, $placeholders) {
   $template_path = plugin_dir_path(__FILE__) . 'templates/emails/custom-order-created-email.php';
 
   $message = get_order_created_email_template($template_path, $placeholders);
@@ -562,18 +562,6 @@ function get_gift_card_received_email_template($template_path, $placeholders) {
   }
 
   return $template_content;
-}
-
-
-function send_gift_card_received_email($to, $subject, $placeholders) {
-  $template_path = plugin_dir_path(__FILE__) . 'templates/emails/gift-card-received-email.php';
-
-  $message = get_order_created_email_template($template_path, $placeholders);
-  
-  $headers = array('Content-Type: text/html; charset=UTF-8');
-  $headers[] = 'From: Listen To Your Soul <admin@ltysoul.com>';
-
-  wp_mail($to, $subject, $message, $headers);
 }
 
 
@@ -689,11 +677,6 @@ function giftcardify_init_gateway_class() {
       }
     }
 
-    // Function to update gift card balance using the endpoint.
-    private function update_gift_card_balance($code, $new_balance) {
-        // Add your logic here to update the gift card balance in the database.
-    }
-
     // Output for the order received page.
     public function thankyou_page() {
       if ($this->instructions) {
@@ -701,11 +684,28 @@ function giftcardify_init_gateway_class() {
       }
     }
 
-    // Add content to the WC emails.
-    public function email_instructions($order, $sent_to_admin, $plain_text = false) {
-      if ($this->instructions && !$sent_to_admin && 'giftcardify_gateway' === $order->get_payment_method()) {
-        echo wpautop(wptexturize($this->instructions));
-      }
-    }
+    // // Add content to the WC emails.
+    // public function email_instructions($order, $sent_to_admin, $plain_text = false) {
+    //   if ($this->instructions && !$sent_to_admin && 'giftcardify_gateway' === $order->get_payment_method()) {
+    //     echo wpautop(wptexturize($this->instructions));
+    //   }
+    // }
   }
+}
+
+
+/**
+ * Register the cron job and hook to the GiftCardify_GiftCard class method
+ */
+add_action('init', 'register_giftcardify_custom_cron_job');
+
+function register_giftcardify_custom_cron_job() {
+  $gift_card = new GiftCardify_GiftCard();
+
+  // Schedule the event if it's not already scheduled
+  if (!wp_next_scheduled('giftcardify_custom_cron_hook')) {
+      wp_schedule_event(time(), 'daily', 'giftcardify_custom_cron_hook');
+  }
+  
+  add_action('giftcardify_custom_cron_hook', array($gift_card, 'send_gift_message_emails'));
 }
