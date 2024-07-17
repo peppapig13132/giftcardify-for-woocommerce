@@ -271,7 +271,7 @@ class GiftCardify_GiftCard {
       "SELECT *
       FROM $table_name
       WHERE gift_card_code = %s",
-      $temp_code
+      $gift_card_code
     );
 
     $result = $wpdb->get_results($query);
