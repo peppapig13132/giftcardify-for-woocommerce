@@ -9,6 +9,8 @@ require_once 'giftcardify-giftcard-log.php';
 class GiftCardify_GiftCard {
   public function __construct() {
     $this->giftcardify_giftcard_log = new GiftCardify_GiftCard_Log();
+    
+    add_action('send_gift_card_received_email', array($this, 'send_gift_card_received_email'));
   }
 
   public function create_giftcard(
@@ -44,7 +46,7 @@ class GiftCardify_GiftCard {
         'shipping_at'         => $shipping_at_,
         'created_at'          => $created_at,
         'sent_at'             => null,
-        'expired_at'          => null
+        'expired_at'          => $expired_at
       ),
       array(
         '%s',
@@ -123,6 +125,12 @@ class GiftCardify_GiftCard {
             array('%d', '%s'),
             array('%d')
           );
+
+          // Update gift card status
+          $this->update_gift_card_status($gift_card_id, 'used');
+
+          // Update sent_at if needed
+          // ...
         }
       }
     }
@@ -136,7 +144,8 @@ class GiftCardify_GiftCard {
     $query = $wpdb->prepare(
       "UPDATE $table_name 
        SET gift_card_status = 'expired', expired_at = NOW()
-       WHERE DATE_ADD(shipping_at, INTERVAL 1 YEAR) <= NOW() 
+       WHERE gift_card_status != 'expired'
+       AND DATE_ADD(shipping_at, INTERVAL 1 YEAR) <= NOW()
        AND gift_card_status != 'expired'"
     );
 
@@ -150,7 +159,8 @@ class GiftCardify_GiftCard {
     $query = $wpdb->prepare(
       "SELECT *
       FROM $table_name
-      WHERE gift_card_code = %s",
+      WHERE gift_card_code = %s
+      AND gift_card_status != 'expired'",
       $gift_card_code
     );
 
@@ -158,8 +168,83 @@ class GiftCardify_GiftCard {
     return $result;
   }
 
-  public function get_giftcards() {
+  public function send_gift_card_received_email() {
+    // Schedule the event if it's not already scheduled
+    if (!wp_next_scheduled('giftcardify_custom_cron_hook')) {
+      wp_schedule_event(time(), 'daily', 'giftcardify_custom_cron_hook');
+    }
+  }
 
+  public function send_gift_message_emails() {
+    $gift_messages = $this->get_gift_messages_to_send();
+
+    foreach ($gift_cards as $gift_card) {
+      $gift_card_id = $gift_card->id;
+
+      $g_to = $order->get_billing_email();
+      $g_subject = 'You Received a Gift Card';
+      $g_placeholders = array(
+        'receiver_name'    => $gift_card->receiver_firstname . ' ' . $gift_card->receiver_lastname,
+        'sender_name'      => $gift_card->sender_name,
+        'gift_card_code'   => $gift_card->gift_card_code,
+        'gift_message'     => $gift_card->gift_message,
+        'available_date'   => $gift_card->expired_at, 
+        'assets_path'      => plugin_dir_url(__FILE__) . '../../'
+      );
+
+      send_gift_card_received_wp_email($g_to, $g_subject, $g_placeholders);
+
+      // Update gift card status
+      $this->update_gift_card_status($gift_card_id, 'sent');
+    }
+
+    $gift_card->expire_giftcards();
+  }
+
+  private function get_gift_messages_to_send() {
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'giftcardify_gift_cards';
+
+    $current_date = current_time('mysql', 0); // 0 for UTC time
+
+    $query = $wpdb->prepare(
+      "SELECT *
+      FROM $table_name
+      WHERE gift_card_status = 'created'
+      AND sent_at IS NULL
+      AND DATE(shipping_at) = DATE(%s)",
+      $current_date
+    );
+
+    $result = $wpdb->get_results($query);
+
+    return $result;
+  }
+    
+  private function send_gift_card_received_wp_email($to, $subject, $placeholders) {
+    $template_path = plugin_dir_path(__FILE__) . '../../templates/emails/gift-card-received-email.php';
+
+    $message = get_order_created_email_template($template_path, $placeholders);
+    
+    $headers = array('Content-Type: text/html; charset=UTF-8');
+    $headers[] = 'From: Listen To Your Soul <admin@ltysoul.com>';
+
+    wp_mail($to, $subject, $message, $headers);
+  }
+
+  private function update_gift_card_status($gift_card_id, $status) {
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'giftcardify_gift_cards';
+
+    $query = $wpdb->prepare(
+      "UPDATE $table_name
+      SET gift_card_status = %s
+      WHERE gift_card_id = %d",
+      $status,
+      $gift_card_id
+    );
+
+    $wpdb->query($query);
   }
 
   private function generate_gift_card_code() {
