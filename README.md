@@ -23,7 +23,7 @@ Shipping date
 ```
 
 - [x] Purchase a gift card - cart page, checkout page
-- [ ] Send custom email to the customer and the gift card receiver
+- [x] Send custom email to the customer and the gift card receiver
 - [x] Buy product with a gift card
 
 ## How to use GiftCardify?

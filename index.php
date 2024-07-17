@@ -492,17 +492,17 @@ function get_order_created_email_template($template_path, $placeholders) {
         $variation_id = $item->get_variation_id();
         $product = $item->get_product();
 
-        $thumbnail = get_the_post_thumbnail_url($product_id, 'thumbnail');
+        $full_image_url  = get_the_post_thumbnail_url($product_id, 'full_size');
 
-        if ($variation_id) {
-          $thumbnail = wp_get_attachment_image_url(get_post_thumbnail_id($variation_id), 'thumbnail');
-        }
+        // if ($variation_id) {
+        //   $full_image_url = wp_get_attachment_image_url(get_post_thumbnail_id($variation_id), 'full_size');
+        // }
 
         $product_list_html .=
         '<tr>
           <td style="min-width: 100px; max-width: 200px; width: 30%; padding-bottom: 20px;">
             <a href="' . get_permalink($product_id) . '">
-              <img src="' . $thumbnail . '" style="width: 100%;" alt="' . $item->get_name() . '">
+              <img src="' . $full_image_url  . '" style="width: 100%;" alt="' . $item->get_name() . '">
             </a>
           </td>
           <td style="padding-left: 10px; padding-bottom: 20px;">
