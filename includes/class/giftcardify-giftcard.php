@@ -81,26 +81,26 @@ class GiftCardify_GiftCard {
     $table_name = $wpdb->prefix . 'giftcardify_gift_cards';
 
     $query = $wpdb->prepare(
-      "SELECT * FROM $table WHERE receiver_email = %s AND gift_card_code = %s",
-      $receiver_email, $gift_card_code
+      "SELECT * FROM $table_name WHERE gift_card_code = %s",
+      $gift_card_code
     );
     $gift_card = $wpdb->get_row( $query );
 
     if ( null === $gift_card ) {
       
-      echo "No gift card found with ID $gift_card_id";
+      error_log("No gift card found with ID $gift_card->id");
       return false;
     } else {
 
       // get balance and validate if it's enough
-      if($gift_card->balance < $amount) {
+      if($gift_card->gift_card_balance < $amount) {
 
-        echo "Gift card balance isn't enough.";
+        error_log("Gift card balance isn't enough.");
         return false;
       } else {
 
         // create gift card usage log
-        $giftcard_log_id = $this->giftcardify_giftcard_log->create_giftcard_log($gift_card_id, $product_order_id, $amount);
+        $giftcard_log_id = $this->giftcardify_giftcard_log->create_giftcard_log($gift_card->id, $product_order_id, $amount);
 
         // update gift card balance
         if($giftcard_log_id > 0) {
@@ -108,12 +108,12 @@ class GiftCardify_GiftCard {
           $table_name = $wpdb->prefix . 'giftcardify_gift_cards';
 
           $data = array(
-            'balance'   => $gift_card->balance - $amount,
-            'status'    => 'used'
+            'gift_card_balance'   => $gift_card->gift_card_balance - $amount,
+            'gift_card_status'    => 'used'
           );
 
           $where = array(
-            'id'  => $gift_card_id
+            'id'  => $gift_card->id
           );
 
           $wpdb->update(
@@ -143,20 +143,18 @@ class GiftCardify_GiftCard {
     $wpdb->query($query);
   }
 
-  private function get_giftcard($receiver_email, $gift_card_code) {
+  public function get_giftcard($gift_card_code) {
     global $wpdb;
     $table_name = $wpdb->prefix . 'giftcardify_gift_cards';
 
     $query = $wpdb->prepare(
       "SELECT *
-      FROM $table
-      WHERE rereceiver_email = %s
-      AND gift_card_code = %s",
-      $receiver_email,
+      FROM $table_name
+      WHERE gift_card_code = %s",
       $gift_card_code
     );
 
-    $result = $wpdb->get_results($query);
+    $result = $wpdb->get_row($query);
     return $result;
   }
 
@@ -186,7 +184,7 @@ class GiftCardify_GiftCard {
 
     $query = $wpdb->prepare(
       "SELECT *
-      FROM $table
+      FROM $table_name
       WHERE gift_card_code = %s",
       $temp_code
     );

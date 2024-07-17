@@ -24,7 +24,7 @@ Shipping date
 
 - [x] Purchase a gift card - cart page, checkout page
 - [ ] Send custom email to the customer and the gift card receiver
-- [ ] Buy product with a gift card
+- [x] Buy product with a gift card
 
 ## How to use GiftCardify?
 

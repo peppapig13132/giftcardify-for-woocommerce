@@ -575,3 +575,137 @@ function send_gift_card_received_email($to, $subject, $placeholders) {
 
   wp_mail($to, $subject, $message, $headers);
 }
+
+
+/**
+ * Register gift card gateway
+ */
+add_filter('woocommerce_payment_gateways', 'giftcardify_register_gateway');
+
+function giftcardify_register_gateway($gateways) {
+  $gateways[] = 'WC_GiftCardify_Gateway';
+  return $gateways;
+}
+
+
+add_action('plugins_loaded', 'giftcardify_init_gateway_class');
+
+function giftcardify_init_gateway_class() {
+
+  class WC_GiftCardify_Gateway extends WC_Payment_Gateway {
+
+    public function __construct() {
+      $this->id = 'giftcardify_gateway';
+      $this->icon = ''; // URL of the icon that will be displayed on checkout page near your gateway name
+      $this->has_fields = true; // in case you need a custom credit card form
+      $this->method_title = 'Gift Card';
+      $this->method_description = 'Pay with gift card balance';
+
+      // Load the settings.
+      $this->init_form_fields();
+      $this->init_settings();
+
+      // Define user setting variables.
+      $this->title = $this->get_option('title');
+      $this->description = $this->get_option('description');
+
+      // Actions.
+      add_action('woocommerce_update_options_payment_gateways_' . $this->id, array($this, 'process_admin_options'));
+      add_action('woocommerce_thankyou_' . $this->id, array($this, 'thankyou_page'));
+
+      // // Customer Emails.
+      // add_action('woocommerce_email_before_order_table', array($this, 'email_instructions'), 10, 3);
+    }
+
+    // Initialize Gateway Settings Form Fields.
+    public function init_form_fields() {
+      $this->form_fields = array(
+        'enabled' => array(
+          'title' => 'Enable/Disable',
+          'type' => 'checkbox',
+          'label' => 'Enable Gift Card Payment',
+          'default' => 'yes'
+        ),
+        'title' => array(
+          'title' => 'Title',
+          'type' => 'text',
+          'description' => 'This controls the title which the user sees during checkout.',
+          'default' => 'Gift Card',
+          'desc_tip' => true,
+        ),
+        'description' => array(
+          'title' => 'Description',
+          'type' => 'textarea',
+          'description' => 'This controls the description which the user sees during checkout.',
+          'default' => 'Pay with your gift card balance.',
+        ),
+      );
+    }
+
+    // Payment form on checkout page.
+    public function payment_fields() {
+      ?>
+      <p><?php echo esc_html($this->description); ?></p>
+      <div>
+        <p class="form-row form-row-wide">
+          <label for="giftcardify_gift_card_code"><?php _e('Gift Card Code', 'woocommerce'); ?> <span class="required">*</span></label>
+          <input id="giftcardify_gift_card_code" class="input-text" type="text" name="giftcardify_gift_card_code" autocomplete="off">
+        </p>
+      </div>
+      <?php
+    }
+
+    // Process the payment and return the result.
+    public function process_payment($order_id) {
+      $order = wc_get_order($order_id);
+      $gift_card_code = sanitize_text_field($_POST['giftcardify_gift_card_code']);
+
+      $giftcard = new GiftCardify_GiftCard();
+      $gift_card = $giftcard->get_giftcard($gift_card_code);
+
+      if ($gift_card && $gift_card->gift_card_balance >= $order->get_total()) {
+        // Deduct the order total from the gift card balance.
+        $new_balance = $gift_card->gift_card_balance - $order->get_total();
+        $giftcard->buy_product_with_giftcard('', $gift_card_code, $order_id, $order->get_total());
+
+        // Mark order as complete and reduce stock levels.
+        $order->payment_complete();
+        wc_reduce_stock_levels($order_id);
+
+        // Add order note.
+        $order->add_order_note(sprintf(__('Gift card applied. Code: %s, Amount: %s'), $gift_card_code, wc_price($order->get_total())));
+
+        // Return thank you page redirect.
+        return array(
+          'result' => 'success',
+          'redirect' => $this->get_return_url($order)
+        );
+      } else {
+        wc_add_notice(__('Invalid or insufficient gift card balance.'), 'error');
+        return array(
+          'result' => 'fail',
+          'redirect' => ''
+        );
+      }
+    }
+
+    // Function to update gift card balance using the endpoint.
+    private function update_gift_card_balance($code, $new_balance) {
+        // Add your logic here to update the gift card balance in the database.
+    }
+
+    // Output for the order received page.
+    public function thankyou_page() {
+      if ($this->instructions) {
+        echo wpautop(wptexturize($this->instructions));
+      }
+    }
+
+    // Add content to the WC emails.
+    public function email_instructions($order, $sent_to_admin, $plain_text = false) {
+      if ($this->instructions && !$sent_to_admin && 'giftcardify_gateway' === $order->get_payment_method()) {
+        echo wpautop(wptexturize($this->instructions));
+      }
+    }
+  }
+}
