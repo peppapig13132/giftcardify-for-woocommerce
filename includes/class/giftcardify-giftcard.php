@@ -171,7 +171,7 @@ class GiftCardify_GiftCard {
   public function send_gift_card_received_email() {
     // Schedule the event if it's not already scheduled
     if (!wp_next_scheduled('giftcardify_custom_cron_hook')) {
-      wp_schedule_event(time(), 'daily', 'giftcardify_custom_cron_hook');
+      wp_schedule_event(time(), 'hourly', 'giftcardify_custom_cron_hook');
     }
   }
 
