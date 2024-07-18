@@ -14,6 +14,7 @@ class GiftCardify_GiftCard {
   }
 
   public function create_giftcard(
+    $order_id,
     $receiver_firstname,
     $receiver_lastname,
     $receiver_email,
@@ -33,6 +34,7 @@ class GiftCardify_GiftCard {
     $result = $wpdb->insert(
       $table_name,
       array(
+        'order_id'            => $order_id,
         'receiver_firstname'  => $receiver_firstname,
         'receiver_lastname'   => $receiver_lastname,
         'receiver_email'      => $receiver_email,
@@ -49,6 +51,7 @@ class GiftCardify_GiftCard {
         'expired_at'          => $expired_at
       ),
       array(
+        '%d',
         '%s',
         '%s',
         '%s',
@@ -73,6 +76,19 @@ class GiftCardify_GiftCard {
     }
   }
 
+  public function update_status_from_draft_to_created($order_id) {
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'giftcardify_gift_cards';
+
+    $query = $wpdb->prepare(
+      "UPDATE $table_name
+      SET gift_card_status = 'created'
+      WHERE order_id = %d
+      AND gift_card_status = 'draft'",
+      $order_id
+    );
+  }
+
   public function buy_product_with_giftcard(
     $receiver_email,
     $gift_card_code,
@@ -83,7 +99,9 @@ class GiftCardify_GiftCard {
     $table_name = $wpdb->prefix . 'giftcardify_gift_cards';
 
     $query = $wpdb->prepare(
-      "SELECT * FROM $table_name WHERE gift_card_code = %s",
+      "SELECT * FROM $table_name
+      WHERE gift_card_code = %s
+      AND gift_card_status NOT IN ('draft', 'expired')",
       $gift_card_code
     );
     $gift_card = $wpdb->get_row( $query );
@@ -146,7 +164,7 @@ class GiftCardify_GiftCard {
        SET gift_card_status = 'expired', expired_at = NOW()
        WHERE gift_card_status != 'expired'
        AND DATE_ADD(shipping_at, INTERVAL 1 YEAR) <= NOW()
-       AND gift_card_status != 'expired'"
+       AND gift_card_status NOT IN ('draft', 'expired')"
     );
 
     $wpdb->query($query);
@@ -160,7 +178,7 @@ class GiftCardify_GiftCard {
       "SELECT *
       FROM $table_name
       WHERE gift_card_code = %s
-      AND gift_card_status != 'expired'",
+      AND gift_card_status NOT IN ('draft', 'expired')",
       $gift_card_code
     );
 
