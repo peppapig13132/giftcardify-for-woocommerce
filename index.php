@@ -246,25 +246,6 @@ function add_gift_card_to_cart() {
 
   // Optionally, validate sender name, gift message, and shipping date as needed
 
-  // Save gift card data into giftcardify's gift card table
-  $giftcard = new GiftCardify_GiftCard();
-
-  // Use gift card code generate function here
-  $gift_card_code = $giftcard->create_giftcard(
-    $receiver_firstname,
-    $receiver_lastname,
-    $receiver_email,
-    $sender_name,
-    '',
-    $gift_message,
-    $gift_card_value_final,
-    $shipping_date
-  );
-
-  if(false === $gift_card_code) {
-    return;
-  }
-
   // Prepare custom cart item data
   $cart_item_data = array(
     'gift_card_value'     => $gift_card_value_final,
@@ -272,7 +253,7 @@ function add_gift_card_to_cart() {
     'receiver_lastname'   => $receiver_lastname,
     'receiver_email'      => $receiver_email,
     'sender_name'         => $sender_name,
-    'gift_card_code'      => $gift_card_code,
+    'gift_card_code'      => '',
     'gift_message'        => $gift_message,
     'shipping_date'       => $shipping_date,
   );
@@ -336,6 +317,22 @@ function save_custom_data_to_order_item($item, $cart_item_key, $values, $order) 
     $item->add_meta_data('gift_message', $values['gift_message']);
     $item->add_meta_data('shipping_date', $values['shipping_date']);
     $item->add_meta_data('gift_card_value', $values['gift_card_value']);
+    
+    // Save gift card data into giftcardify's gift card table
+    $giftcard = new GiftCardify_GiftCard();
+
+    // Use gift card code generate function here
+    $gift_card_code = $giftcard->create_giftcard(
+      $order->get_id(),
+      $values['receiver_firstname'],
+      $values['receiver_lastname'],
+      $values['receiver_email'],
+      $values['sender_name'],
+      '',
+      $values['gift_message'],
+      $values['gift_card_value'],
+      $values['shipping_date']
+    );
   }
 }
 
@@ -413,6 +410,7 @@ function custom_gift_card_before_calculate_totals($cart) {
     }
   }
 }
+
 
 add_action('woocommerce_checkout_order_processed', 'giftcardify_order_created', 10, 3);
 
@@ -562,6 +560,18 @@ function get_gift_card_received_email_template($template_path, $placeholders) {
   }
 
   return $template_content;
+}
+
+
+/**
+ * Update gift card status once the order is completed: draft >>> created
+ */
+add_action( 'woocommerce_order_status_completed', 'udpate_gift_card_status_after_order_completion' );
+
+function udpate_gift_card_status_after_order_completion( $order_id ) {
+  $gift_card = new GiftCardify_GiftCard();
+
+  $gift_card->update_status_from_draft_to_created($order_id);
 }
 
 
