@@ -1,6 +1,6 @@
 # GiftCardify for WooCommerce
 
-💡 The plugin is in development stage.
+💡 The plugin is in testing stage.
 
 <div align="center">
 <img src="https://raw.githubusercontent.com/peppapig13132/GiftCardify-for-WooCommerce/main/assets/images/others/Gift-card.png"  alt="giftcard">
