@@ -27,6 +27,19 @@ Shipping date
 - [x] Buy product with a gift card
 
 ## How to use GiftCardify?
+### Create a product - Gift Card
+- Name: Gift Card
+- Product Type: Gift Card (GiftCaridfy plugin adds this product type)
+- Preset prices with comma
+<div align="center">
+<img src="https://raw.githubusercontent.com/peppapig13132/GiftCardify-for-WooCommerce/main/assets/images/others/edit-product.png"  alt="edit-product">
+</div>
+
+### Modify template - single product gift card
+Modify single product gift card template here: `templates/single-product/gift-card.php`.
+
+### Modify custom email templates
+- Check HTML email templates and then move then to PHP templates in `templates/emails`.
 
 ## Screenshots
 - Single Product Gift Card page: [Click here](https://github.com/peppapig13132/GiftCardify-for-WooCommerce/blob/main/assets/images/others/single-product-gift-card.png)
