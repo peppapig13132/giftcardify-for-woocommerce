@@ -32,7 +32,7 @@ Shipping date
 - Product Type: Gift Card (GiftCaridfy plugin adds this product type)
 - Preset prices with comma
 <div align="center">
-<img src="https://raw.githubusercontent.com/peppapig13132/GiftCardify-for-WooCommerce/main/assets/images/others/edit-product.png"  alt="edit-product">
+<img src="https://raw.githubusercontent.com/peppapig13132/GiftCardify-for-WooCommerce/main/assets/images/others/create-gift-card-product.png"  alt="edit-product">
 </div>
 
 ### Modify template - single product gift card
