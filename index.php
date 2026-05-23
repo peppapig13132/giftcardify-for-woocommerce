@@ -3,7 +3,7 @@
 Plugin Name: GiftCardify for WooCommerce
 Plugin URI:
 Description: This plugin provides a custom Gift card solution for the e-shops using WordPress & WooCommerce.
-Version: 1.0
+Version: 1.0.1
 Author:
 Author URI:
 */
@@ -17,6 +17,117 @@ if (!defined('WPINC')) {
  */
 require_once(plugin_dir_path(__FILE__) . 'includes/class/giftcardify-giftcard.php');
 
+define('GIFTCARDIFY_VERSION', '1.0.1');
+
+add_action('plugins_loaded', 'giftcardify_check_woocommerce', 5);
+
+function giftcardify_check_woocommerce() {
+  if (class_exists('WooCommerce')) {
+    return;
+  }
+
+  add_action('admin_notices', 'giftcardify_missing_woocommerce_notice');
+}
+
+function giftcardify_missing_woocommerce_notice() {
+  echo '<div class="notice notice-error"><p>' . esc_html__('GiftCardify requires WooCommerce to be installed and active.', 'giftcardify_for_woocommerce') . '</p></div>';
+}
+
+/**
+ * Allowed preset amounts for a gift card product (from product meta).
+ *
+ * @return float[]
+ */
+function giftcardify_get_allowed_preset_amounts($product_id) {
+  $values = get_post_meta($product_id, '_gift_card_values', true);
+
+  if (!$values) {
+    return array();
+  }
+
+  $amounts = array();
+
+  foreach (explode(',', $values) as $value) {
+    $value = trim($value);
+
+    if ($value !== '' && is_numeric($value)) {
+      $amounts[] = round(floatval($value), 2);
+    }
+  }
+
+  return array_values(array_unique($amounts));
+}
+
+/**
+ * Validate gift card purchase amount server-side.
+ *
+ * @return float|WP_Error
+ */
+function giftcardify_validate_gift_card_amount($product_id, $gift_card_value, $custom_amount) {
+  $product = wc_get_product($product_id);
+
+  if (!$product || $product->get_type() !== 'gift_card') {
+    return new WP_Error('invalid_product', __('Invalid gift card product.', 'giftcardify_for_woocommerce'));
+  }
+
+  $allowed_presets = giftcardify_get_allowed_preset_amounts($product_id);
+
+  if ($gift_card_value === 'custom_amount') {
+    $amount = round(floatval($custom_amount), 2);
+    $min = apply_filters('giftcardify_min_custom_amount', 1);
+    $max = apply_filters('giftcardify_max_custom_amount', 10000);
+
+    if ($amount < $min || $amount > $max) {
+      return new WP_Error(
+        'invalid_custom_amount',
+        sprintf(
+          /* translators: 1: minimum amount 2: maximum amount */
+          __('Custom gift card amount must be between %1$s and %2$s.', 'giftcardify_for_woocommerce'),
+          wc_price($min),
+          wc_price($max)
+        )
+      );
+    }
+
+    return $amount;
+  }
+
+  $selected = round(floatval($gift_card_value), 2);
+
+  foreach ($allowed_presets as $preset) {
+    if (abs($preset - $selected) < 0.0001) {
+      return $selected;
+    }
+  }
+
+  return new WP_Error('invalid_amount', __('Please select a valid gift card amount.', 'giftcardify_for_woocommerce'));
+}
+
+function giftcardify_activate_order_gift_cards($order_id) {
+  $gift_card = new GiftCardify_GiftCard();
+  $gift_card->update_status_from_draft_to_created($order_id);
+}
+
+function giftcardify_is_redemption_rate_limited() {
+  $ip = isset($_SERVER['REMOTE_ADDR']) ? sanitize_text_field(wp_unslash($_SERVER['REMOTE_ADDR'])) : 'unknown';
+  $key = 'giftcardify_redeem_fail_' . md5($ip);
+  $failures = (int) get_transient($key);
+
+  return $failures >= 10;
+}
+
+function giftcardify_record_redemption_failure() {
+  $ip = isset($_SERVER['REMOTE_ADDR']) ? sanitize_text_field(wp_unslash($_SERVER['REMOTE_ADDR'])) : 'unknown';
+  $key = 'giftcardify_redeem_fail_' . md5($ip);
+  $failures = (int) get_transient($key);
+
+  set_transient($key, $failures + 1, 15 * MINUTE_IN_SECONDS);
+}
+
+function giftcardify_clear_redemption_failures() {
+  $ip = isset($_SERVER['REMOTE_ADDR']) ? sanitize_text_field(wp_unslash($_SERVER['REMOTE_ADDR'])) : 'unknown';
+  delete_transient('giftcardify_redeem_fail_' . md5($ip));
+}
 
 /**
  * Plugin activation hooks
@@ -24,13 +135,12 @@ require_once(plugin_dir_path(__FILE__) . 'includes/class/giftcardify-giftcard.ph
 register_activation_hook(__FILE__, 'giftcardify_activation');
 
 function giftcardify_activation() {
-  // Create tables
-  require_once(plugin_dir_path(__FILE__) . 'database/db-setup.php');
-  
+  require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+  require_once plugin_dir_path(__FILE__) . 'database/db-setup.php';
+
   dbDelta($sql_gift_cards);
   dbDelta($sql_gift_card_logs);
 }
-
 
 /**
  * Plugin deactivation hooks
@@ -38,17 +148,7 @@ function giftcardify_activation() {
 register_deactivation_hook(__FILE__, 'giftcardify_deactivation');
 
 function giftcardify_deactivation() {
-  // Drop tables - use this script only in development mode
-  global $wpdb;
-
-  $table_name_gift_cards = $wpdb->prefix . 'giftcardify_gift_cards';
-  $table_name_gift_card_logs = $wpdb->prefix . 'giftcardify_gift_card_logs';
-
-  $sql_delete_gift_cards = "DROP TABLE IF EXISTS $table_name_gift_cards";
-  $sql_delete_gift_card_logs = "DROP TABLE IF EXISTS $table_name_gift_card_logs";
-
-  $wpdb->query($sql_delete_gift_cards);
-  $wpdb->query($sql_delete_gift_card_logs);
+  wp_clear_scheduled_hook('giftcardify_custom_cron_hook');
 }
 
 
@@ -180,71 +280,86 @@ add_action('wp_ajax_add_gift_card_to_cart', 'add_gift_card_to_cart');
 add_action('wp_ajax_nopriv_add_gift_card_to_cart', 'add_gift_card_to_cart');
 
 function add_gift_card_to_cart() {
-  // Verify nonce for security
   check_ajax_referer('gift_card_nonce', 'security');
 
-  // Initialize response array
   $response = array('success' => false, 'message' => '');
 
-  // Ensure WooCommerce session is started
+  if (!function_exists('WC') || !WC()->cart) {
+    $response['message'] = __('Store is unavailable. Please try again.', 'giftcardify_for_woocommerce');
+    wp_send_json($response);
+  }
+
   if (!WC()->session) {
     WC()->session = new WC_Session_Handler();
     WC()->session->init();
   }
 
-  // Retrieve and sanitize POST data
   $product_id = isset($_POST['post_id']) ? intval($_POST['post_id']) : 0;
-  $product_type = isset($_POST['product_type']) ? sanitize_text_field($_POST['product_type']) : '';
-  $gift_card_value = isset($_POST['gift_card_value']) ? sanitize_text_field($_POST['gift_card_value']) : '';
-  $custom_amount = isset($_POST['custom_gift_card_price']) ? floatval($_POST['custom_gift_card_price']) : 100;
-  $gift_card_value_final = $gift_card_value === 'custom_amount' ? $custom_amount : $gift_card_value;
-  $receiver_firstname = isset($_POST['receiver_firstname']) ? sanitize_text_field($_POST['receiver_firstname']) : '';
-  $receiver_lastname = isset($_POST['receiver_lastname']) ? sanitize_text_field($_POST['receiver_lastname']) : '';
-  $receiver_email = isset($_POST['receiver_email']) ? sanitize_email($_POST['receiver_email']) : '';
-  $sender_name = isset($_POST['sender_name']) ? sanitize_text_field($_POST['sender_name']) : '';
-  $gift_message = isset($_POST['gift_message']) ? sanitize_textarea_field($_POST['gift_message']) : '';
-  $shipping_date = isset($_POST['shipping_date']) ? sanitize_text_field($_POST['shipping_date']) : '';
+  $gift_card_value = isset($_POST['gift_card_value']) ? sanitize_text_field(wp_unslash($_POST['gift_card_value'])) : '';
+  $custom_amount = isset($_POST['custom_gift_card_price']) ? floatval($_POST['custom_gift_card_price']) : 0;
+  $receiver_firstname = isset($_POST['receiver_firstname']) ? sanitize_text_field(wp_unslash($_POST['receiver_firstname'])) : '';
+  $receiver_lastname = isset($_POST['receiver_lastname']) ? sanitize_text_field(wp_unslash($_POST['receiver_lastname'])) : '';
+  $receiver_email = isset($_POST['receiver_email']) ? sanitize_email(wp_unslash($_POST['receiver_email'])) : '';
+  $receiver_email_confirm = isset($_POST['receiver_email_confirm']) ? sanitize_email(wp_unslash($_POST['receiver_email_confirm'])) : '';
+  $sender_name = isset($_POST['sender_name']) ? sanitize_text_field(wp_unslash($_POST['sender_name'])) : '';
+  $gift_message = isset($_POST['gift_message']) ? sanitize_textarea_field(wp_unslash($_POST['gift_message'])) : '';
+  $shipping_date = isset($_POST['shipping_date']) ? sanitize_text_field(wp_unslash($_POST['shipping_date'])) : '';
 
-  // Validate product ID
   if ($product_id <= 0) {
-    $response['message'] = __('Invalid product ID.', 'textdomain');
+    $response['message'] = __('Invalid product ID.', 'giftcardify_for_woocommerce');
     wp_send_json($response);
   }
 
-  // Validate product type (if necessary)
-  if ($product_type !== 'gift_card') {
-    $response['message'] = __('Invalid product type.', 'textdomain');
+  $product = wc_get_product($product_id);
+
+  if (!$product || $product->get_type() !== 'gift_card') {
+    $response['message'] = __('Invalid product type.', 'giftcardify_for_woocommerce');
     wp_send_json($response);
   }
 
-  // Validate gift card value
   if (empty($gift_card_value)) {
-    $response['message'] = __('Gift card value is required.', 'textdomain');
+    $response['message'] = __('Gift card value is required.', 'giftcardify_for_woocommerce');
     wp_send_json($response);
   }
 
-  // Validate receiver first name
+  $validated_amount = giftcardify_validate_gift_card_amount($product_id, $gift_card_value, $custom_amount);
+
+  if (is_wp_error($validated_amount)) {
+    $response['message'] = $validated_amount->get_error_message();
+    wp_send_json($response);
+  }
+
+  $gift_card_value_final = $validated_amount;
+
   if (empty($receiver_firstname)) {
-    $response['message'] = __('Receiver first name is required.', 'textdomain');
+    $response['message'] = __('Receiver first name is required.', 'giftcardify_for_woocommerce');
     wp_send_json($response);
   }
 
-  // Validate receiver last name
   if (empty($receiver_lastname)) {
-    $response['message'] = __('Receiver last name is required.', 'textdomain');
+    $response['message'] = __('Receiver last name is required.', 'giftcardify_for_woocommerce');
     wp_send_json($response);
   }
 
-  // Validate receiver email
-  if (empty($receiver_email)) {
-    $response['message'] = __('Receiver email is required.', 'textdomain');
-    wp_send_json($response);
-  } elseif (!is_email($receiver_email)) {
-    $response['message'] = __('Invalid receiver email format.', 'textdomain');
+  if (empty($receiver_email) || !is_email($receiver_email)) {
+    $response['message'] = __('A valid receiver email is required.', 'giftcardify_for_woocommerce');
     wp_send_json($response);
   }
 
-  // Optionally, validate sender name, gift message, and shipping date as needed
+  if (empty($receiver_email_confirm) || !is_email($receiver_email_confirm)) {
+    $response['message'] = __('Please confirm the receiver email.', 'giftcardify_for_woocommerce');
+    wp_send_json($response);
+  }
+
+  if (strtolower($receiver_email) !== strtolower($receiver_email_confirm)) {
+    $response['message'] = __('Receiver email addresses do not match.', 'giftcardify_for_woocommerce');
+    wp_send_json($response);
+  }
+
+  if (empty($shipping_date) || false === strtotime($shipping_date)) {
+    $response['message'] = __('A valid shipping date is required.', 'giftcardify_for_woocommerce');
+    wp_send_json($response);
+  }
 
   // Prepare custom cart item data
   $cart_item_data = array(
@@ -258,27 +373,8 @@ function add_gift_card_to_cart() {
     'shipping_date'       => $shipping_date,
   );
 
-  // Check if product is purchasable
-  $product = wc_get_product($product_id);
-
-  // $product->set_regular_price('100'); // You can set a default or minimum value
-
-  // Mark as virtual and downloadable
-  $product->set_virtual(true);
-
-  // Set stock status
-  $product->set_manage_stock(false);
-  $product->set_stock_status('instock');
-
-  // Set SKU
-  $product->set_sku('GFT100');
-
-  // Save the product
-  $product->save();
-
   if (!$product->is_purchasable()) {
-    error_log('Product is not purchasable: ' . $product_id);
-    $response['message'] = __('This product cannot be purchased.', 'textdomain');
+    $response['message'] = __('This product cannot be purchased.', 'giftcardify_for_woocommerce');
     wp_send_json($response);
   }
 
@@ -287,14 +383,9 @@ function add_gift_card_to_cart() {
 
   if ($cart_item_key) {
     $response['success'] = true;
-    $response['message'] = __('Gift card added to cart successfully.', 'textdomain');
+    $response['message'] = __('Gift card added to cart successfully.', 'giftcardify_for_woocommerce');
   } else {
-    $response['success'] = false;
-    $response['message'] = __('Failed to add gift card to cart.', 'textdomain');
-    // Log error details
-    error_log('Failed to add to cart. Product ID: ' . $product_id);
-    error_log('Cart item data: ' . print_r($cart_item_data, true));
-    error_log('Cart contents: ' . print_r(WC()->cart->get_cart(), true));
+    $response['message'] = __('Failed to add gift card to cart.', 'giftcardify_for_woocommerce');
   }
 
   wp_send_json($response);
@@ -308,32 +399,31 @@ function add_gift_card_to_cart() {
 add_action('woocommerce_checkout_create_order_line_item', 'save_custom_data_to_order_item', 10, 4);
 
 function save_custom_data_to_order_item($item, $cart_item_key, $values, $order) {
-  if (isset($values['gift_card_value'])) { // Define if this item is gift card
-    $item->add_meta_data('receiver_firstname', $values['receiver_firstname']);
-    $item->add_meta_data('receiver_lastname', $values['receiver_lastname']);
-    $item->add_meta_data('receiver_email', $values['receiver_email']);
-    $item->add_meta_data('sender_name', $values['sender_name']);
-    $item->add_meta_data('gift_card_code', $values['gift_card_code']);
-    $item->add_meta_data('gift_message', $values['gift_message']);
-    $item->add_meta_data('shipping_date', $values['shipping_date']);
-    $item->add_meta_data('gift_card_value', $values['gift_card_value']);
-    
-    // Save gift card data into giftcardify's gift card table
-    $giftcard = new GiftCardify_GiftCard();
-
-    // Use gift card code generate function here
-    $gift_card_code = $giftcard->create_giftcard(
-      $order->get_id(),
-      $values['receiver_firstname'],
-      $values['receiver_lastname'],
-      $values['receiver_email'],
-      $values['sender_name'],
-      '',
-      $values['gift_message'],
-      $values['gift_card_value'],
-      $values['shipping_date']
-    );
+  if (!isset($values['gift_card_value'])) {
+    return;
   }
+
+  $giftcard = new GiftCardify_GiftCard();
+  $gift_card_code = $giftcard->create_giftcard(
+    $order->get_id(),
+    $values['receiver_firstname'],
+    $values['receiver_lastname'],
+    $values['receiver_email'],
+    $values['sender_name'],
+    $order->get_billing_email(),
+    $values['gift_message'],
+    $values['gift_card_value'],
+    $values['shipping_date']
+  );
+
+  $item->add_meta_data('receiver_firstname', $values['receiver_firstname']);
+  $item->add_meta_data('receiver_lastname', $values['receiver_lastname']);
+  $item->add_meta_data('receiver_email', $values['receiver_email']);
+  $item->add_meta_data('sender_name', $values['sender_name']);
+  $item->add_meta_data('gift_card_code', $gift_card_code ? $gift_card_code : '');
+  $item->add_meta_data('gift_message', $values['gift_message']);
+  $item->add_meta_data('shipping_date', $values['shipping_date']);
+  $item->add_meta_data('gift_card_value', $values['gift_card_value']);
 }
 
 
@@ -564,14 +654,13 @@ function get_gift_card_received_email_template($template_path, $placeholders) {
 
 
 /**
- * Update gift card status once the order is completed: draft >>> created
+ * Activate purchased gift cards after payment (draft -> created).
  */
-add_action( 'woocommerce_order_status_completed', 'udpate_gift_card_status_after_order_completion' );
+add_action('woocommerce_payment_complete', 'giftcardify_activate_order_gift_cards_on_payment', 10, 1);
+add_action('woocommerce_order_status_completed', 'giftcardify_activate_order_gift_cards_on_payment', 10, 1);
 
-function udpate_gift_card_status_after_order_completion( $order_id ) {
-  $gift_card = new GiftCardify_GiftCard();
-
-  $gift_card->update_status_from_draft_to_created($order_id);
+function giftcardify_activate_order_gift_cards_on_payment($order_id) {
+  giftcardify_activate_order_gift_cards($order_id);
 }
 
 
@@ -586,9 +675,12 @@ function giftcardify_register_gateway($gateways) {
 }
 
 
-add_action('plugins_loaded', 'giftcardify_init_gateway_class');
+add_action('plugins_loaded', 'giftcardify_init_gateway_class', 20);
 
 function giftcardify_init_gateway_class() {
+  if (!class_exists('WooCommerce') || !class_exists('WC_Payment_Gateway')) {
+    return;
+  }
 
   class WC_GiftCardify_Gateway extends WC_Payment_Gateway {
 
@@ -656,35 +748,60 @@ function giftcardify_init_gateway_class() {
     // Process the payment and return the result.
     public function process_payment($order_id) {
       $order = wc_get_order($order_id);
-      $gift_card_code = sanitize_text_field($_POST['giftcardify_gift_card_code']);
+
+      if (!$order) {
+        wc_add_notice(__('Order not found.', 'giftcardify_for_woocommerce'), 'error');
+        return array('result' => 'fail', 'redirect' => '');
+      }
+
+      if (giftcardify_is_redemption_rate_limited()) {
+        wc_add_notice(__('Too many failed attempts. Please wait and try again.', 'giftcardify_for_woocommerce'), 'error');
+        return array('result' => 'fail', 'redirect' => '');
+      }
+
+      $gift_card_code = isset($_POST['giftcardify_gift_card_code'])
+        ? sanitize_text_field(wp_unslash($_POST['giftcardify_gift_card_code']))
+        : '';
+
+      if ('' === $gift_card_code) {
+        giftcardify_record_redemption_failure();
+        wc_add_notice(__('Please enter a gift card code.', 'giftcardify_for_woocommerce'), 'error');
+        return array('result' => 'fail', 'redirect' => '');
+      }
 
       $giftcard = new GiftCardify_GiftCard();
       $gift_card = $giftcard->get_giftcard($gift_card_code);
+      $order_total = round(floatval($order->get_total()), 2);
 
-      if ($gift_card && $gift_card->gift_card_balance >= $order->get_total()) {
-        // Deduct the order total from the gift card balance.
-        $new_balance = $gift_card->gift_card_balance - $order->get_total();
-        $giftcard->buy_product_with_giftcard('', $gift_card_code, $order_id, $order->get_total());
-
-        // Mark order as complete and reduce stock levels.
-        $order->payment_complete();
-        wc_reduce_stock_levels($order_id);
-
-        // Add order note.
-        $order->add_order_note(sprintf(__('Gift card applied. Code: %s, Amount: %s'), $gift_card_code, wc_price($order->get_total())));
-
-        // Return thank you page redirect.
-        return array(
-          'result' => 'success',
-          'redirect' => $this->get_return_url($order)
-        );
-      } else {
-        wc_add_notice(__('Invalid or insufficient gift card balance.'), 'error');
-        return array(
-          'result' => 'fail',
-          'redirect' => ''
-        );
+      if (!$gift_card || floatval($gift_card->gift_card_balance) < $order_total) {
+        giftcardify_record_redemption_failure();
+        wc_add_notice(__('Invalid or insufficient gift card balance.', 'giftcardify_for_woocommerce'), 'error');
+        return array('result' => 'fail', 'redirect' => '');
       }
+
+      if (!$giftcard->redeem_gift_card($gift_card_code, $order_id, $order_total)) {
+        giftcardify_record_redemption_failure();
+        wc_add_notice(__('Unable to apply gift card. Please try again.', 'giftcardify_for_woocommerce'), 'error');
+        return array('result' => 'fail', 'redirect' => '');
+      }
+
+      giftcardify_clear_redemption_failures();
+
+      $order->payment_complete();
+      wc_reduce_stock_levels($order_id);
+
+      $order->add_order_note(
+        sprintf(
+          __('Gift card applied. Code: %1$s, Amount: %2$s', 'giftcardify_for_woocommerce'),
+          $gift_card_code,
+          wc_price($order_total)
+        )
+      );
+
+      return array(
+        'result'   => 'success',
+        'redirect' => $this->get_return_url($order),
+      );
     }
 
     // Output for the order received page.

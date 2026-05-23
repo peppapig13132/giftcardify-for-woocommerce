@@ -136,14 +136,16 @@ while (have_posts()) :
       jsonData['security'] = $('#gift_card_nonce').val();
       
       $.ajax({
-        url: '/wp-admin/admin-ajax.php',
+        url: '<?php echo esc_url(admin_url('admin-ajax.php')); ?>',
         type: 'POST',
         data: jsonData,
         success: function(response) {
           if(response.success) {
-            window.location.href = '/cart';
+            window.location.href = '<?php echo esc_url(wc_get_cart_url()); ?>';
+          } else if (response.message) {
+            alert(response.message);
           } else {
-            console.log('Failed to add gift card to cart');
+            alert('<?php echo esc_js(__('Failed to add gift card to cart.', 'giftcardify_for_woocommerce')); ?>');
           }
         },
         error: function(xhr, status, error) {

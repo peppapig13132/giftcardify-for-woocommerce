@@ -26,7 +26,7 @@ class GiftCardify_GiftCard_Log {
       array(
         '%d',
         '%d',
-        '%d',
+        '%f',
         '%s'
       )
     );
